@@ -1,0 +1,123 @@
+library(argparse)
+library(cowplot)
+library(tidyverse)
+library(forcats)
+library(viridis)
+
+parser = ArgumentParser()
+parser$add_argument('-i', '--inputs', type='character', nargs='+')
+parser$add_argument('-c', '--cutoffs', type='double', nargs='+')
+parser$add_argument('-l', '--logtxn', type='character', nargs='+')
+parser$add_argument('-a', '--assays', type='character', nargs='+')
+parser$add_argument('-t', '--type', type='character')
+parser$add_argument('-r', '--refptlabel', type='character', nargs='+')
+parser$add_argument('-u', '--upstream', type='integer')
+parser$add_argument('-d', '--dnstream', type='integer')
+parser$add_argument('-s', '--scaled_length', type='integer')
+parser$add_argument('-e', '--endlabel', type='character', nargs='+')
+parser$add_argument('-o', '--output', type='character')
+
+args = parser$parse_args()
+
+format_xaxis = function(refptlabel, upstream, dnstream){
+    function(x){
+        if (first(upstream)>500 | first(dnstream)>500){
+            return(if_else(x==0, refptlabel, as.character(x)))                                                                                                                           
+        }
+        else {
+            return(if_else(x==0, refptlabel, as.character(x*1000)))
+        } 
+    }                                                                                                                                                                                    
+}
+
+main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
+                upstream, dnstream, scaled_length, endlabel, outpath) {
+    nassays = length(assays)
+    
+    dflist = list()
+    
+    for (i in 1:nassays){
+        cutoff = cutoffs[[i]]
+        dflist[[assays[[i]]]] =
+            read_tsv(inputs[[i]], col_names=c('group', 'sample', 'annotation',
+                                              'assay', 'index', 'position', 'signal')) %>% 
+            mutate_at(vars('group', 'sample', 'annotation'), funs(fct_inorder(., ordered=TRUE))) %>% 
+            group_by(group, annotation, assay, index, position) %>% 
+            summarise(mean = mean(signal)) %>% 
+            ungroup() %>% 
+            mutate(mean = pmin(mean, cutoff))
+        if (logtxn[[i]]=="True"){
+            pcount = 0.1
+            dflist[[i]] = dflist[[i]] %>% mutate(mean = log2(mean+pcount))    
+        }
+    }
+    
+    plotlist = list()
+    
+    theme_default = theme_minimal() +
+        theme(text = element_text(size=12, color="black", face="bold"),
+              axis.text.y = element_blank(),
+              axis.text.x = element_text(size=12, color="black", face="bold", margin = unit(c(0,0,0,0), "cm")),
+              axis.title.y = element_blank(),
+              strip.text = element_text(size=12, color="black", face="bold"),
+              strip.text.y = element_text(angle=-90),
+              strip.background = element_blank(),
+              legend.position="top",
+              legend.text = element_text(size=10, face="plain"),
+              legend.margin = margin(0,0,0,0),
+              legend.box.margin = margin(0,0,0,0),
+              panel.grid.major.x = element_line(color="black"),
+              panel.grid.minor.x = element_line(color="black"),
+              panel.grid.major.y = element_line(color="black"),
+              panel.grid.minor.y = element_blank(),
+              panel.spacing.x = unit(.5, "cm"))
+    
+    for (i in 1:nassays){
+        plotlist[[assays[[i]]]] =
+            ggplot(data = dflist[[i]], aes(x=position, y=index, fill=mean)) +
+            geom_raster() +
+            scale_fill_viridis(option='inferno',
+                               na.value = "#FFFFFF00",
+                               guide=guide_colorbar(title.position="top", barwidth=12,
+                                                    barheight=1, title.hjust=0.5),
+                               name=if (logtxn[[i]]){ bquote(bold(log[2] ~ .(assays[[i]]) ~ "signal"))}
+                                    else {bquote(bold(.(assays[[i]]) ~ "signal"))}) +
+            scale_y_reverse(expand=c(0.02,0)) +
+            facet_grid(annotation~group, scale="free_y", space="free_y", switch="y") +
+            theme_default
+        if (type=="absolute"){
+            plotlist[[i]] = plotlist[[i]] +
+                scale_x_continuous(breaks = scales::pretty_breaks(n=3),
+                                   labels = format_xaxis(refptlabel = refptlabel,
+                                                         upstream = upstream,
+                                                         dnstream = dnstream),
+                                   name= paste("distance from", refptlabel, 
+                                               if_else(upstream>500 | dnstream>500, "(kb)", "(nt)")),
+                                   expand=c(0.05, 0))
+        }
+        else {
+            plotlist[[i]] = plotlist[[i]] +
+                scale_x_continuous(breaks = c(0, (scaled_length/2)/1000, scaled_length/1000),
+                                   labels = c(refptlabel, "", endlabel),
+                                   name= "scaled distance",
+                                   expand=c(0.05, 0))
+        }
+    }
+    
+    allplots = plot_grid(plotlist = plotlist, align="h", ncol=min(nassays, 4))
+    ggplot2::ggsave(outpath, plot = allplots,
+           width=min(nassays,4)*8, height=ceiling(nassays/4)*20, units="cm",
+           limitsize=FALSE)
+}
+
+main(inputs = args$inputs,
+     cutoffs = args$cutoffs,
+     logtxn = args$logtxn,
+     assays = args$assays,
+     type = args$type,
+     refptlabel = paste(args$refptlabel, collapse=" "),
+     upstream = args$upstream,
+     dnstream= args$dnstream,
+     scaled_length= args$scaled_length,
+     endlabel = paste(args$scaled_length, collapse=" "),
+     outpath = args$output)
