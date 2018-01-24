@@ -3,6 +3,7 @@ library(cowplot)
 library(tidyverse)
 library(forcats)
 library(viridis)
+library(dendsort)
 
 parser = ArgumentParser()
 parser$add_argument('-i', '--inputs', type='character', nargs='+')
@@ -15,6 +16,8 @@ parser$add_argument('-u', '--upstream', type='integer')
 parser$add_argument('-d', '--dnstream', type='integer')
 parser$add_argument('-s', '--scaled_length', type='integer')
 parser$add_argument('-e', '--endlabel', type='character', nargs='+')
+parser$add_argument('-z', '--cluster', type='character')
+parser$add_argument('-k', dest='k', type='integer', nargs='+')
 parser$add_argument('-o', '--output', type='character')
 
 args = parser$parse_args()
@@ -31,24 +34,76 @@ format_xaxis = function(refptlabel, upstream, dnstream){
 }
 
 main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
-                upstream, dnstream, scaled_length, endlabel, outpath) {
+                upstream, dnstream, scaled_length, cluster, k, endlabel, outpath) {
     nassays = length(assays)
     
     dflist = list()
+    
+    dfcluster = tibble()
     
     for (i in 1:nassays){
         cutoff = cutoffs[[i]]
         dflist[[assays[[i]]]] =
             read_tsv(inputs[[i]], col_names=c('group', 'sample', 'annotation',
                                               'assay', 'index', 'position', 'signal')) %>% 
-            mutate_at(vars('group', 'sample', 'annotation'), funs(fct_inorder(., ordered=TRUE))) %>% 
+            mutate(index = paste(annotation, index)) %>% 
+            mutate_at(vars('group', 'sample', 'index'), funs(fct_inorder(., ordered=TRUE))) %>% 
             group_by(group, annotation, assay, index, position) %>% 
             summarise(mean = mean(signal)) %>% 
-            ungroup() %>% 
-            mutate(mean = pmin(mean, cutoff))
+            ungroup()
+        
+        #for putting number of indices in facet labels
+        dd = dflist[[i]] %>% group_by(annotation) %>%
+            summarise(n = n_distinct(index)) %>% 
+            transmute(annotation=annotation,
+                      label = paste(n, annotation))
+        
+        dflist[[i]] = dflist[[i]] %>% left_join(dd, by="annotation") %>% 
+            mutate(annotation = fct_inorder(label, ordered=TRUE)) %>% 
+            select(-label)
+        
+        if (cluster=="True"){
+            dfcluster = dfcluster %>%
+                bind_rows(dflist[[i]] %>%
+                              mutate(mean = (mean-min(mean, na.rm=TRUE))/
+                                         (max(mean, na.rm=TRUE)-min(mean, na.rm=TRUE))))
+        }
+        
+        dflist[[i]] = dflist[[i]] %>% mutate(mean = pmin(mean, cutoff))
+        
         if (logtxn[[i]]=="True"){
             pcount = 0.1
             dflist[[i]] = dflist[[i]] %>% mutate(mean = log2(mean+pcount))    
+        }
+    }
+    
+    if (cluster=="True") {
+        annotations = unique(dflist[[1]]$annotation)
+        roworder = tibble()
+        
+        for (j in 1:length(annotations)){
+            i = annotations[[j]]
+            #k-means clustering on non-logtransformed data scaled 0 to 1
+            rr = dfcluster %>% filter(annotation==i) %>% 
+                select(-annotation) %>% 
+                unite(cid, c("group", "assay", "position"), sep="~") %>% 
+                spread(cid, mean, fill=0) %>% 
+                remove_rownames() %>%
+                column_to_rownames(var="index")
+            rclust = kmeans(rr, centers=k[[j]])
+            
+            #hierarchical clustering of k-means centers
+            centerclust = rclust$centers %>% dist() %>% hclust() %>% dendsort(isReverse=TRUE)
+            
+            reorder = rclust$cluster %>% as_tibble() %>%
+                rownames_to_column(var="index") %>% 
+                mutate(index = ordered(index, levels=levels(dflist[[1]]$index)),
+                       value = ordered(value, levels=centerclust$order)) %>% 
+                arrange(value, index)
+            roworder = bind_rows(reorder, roworder)
+        }
+        for (i in 1:nassays){
+            dflist[[i]]$index = ordered(dflist[[i]]$index, levels=roworder$index)
         }
     }
     
@@ -68,13 +123,13 @@ main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
               legend.box.margin = margin(0,0,0,0),
               panel.grid.major.x = element_line(color="black"),
               panel.grid.minor.x = element_line(color="black"),
-              panel.grid.major.y = element_line(color="black"),
+              panel.grid.major.y = element_blank(),
               panel.grid.minor.y = element_blank(),
               panel.spacing.x = unit(.5, "cm"))
     
     for (i in 1:nassays){
         plotlist[[assays[[i]]]] =
-            ggplot(data = dflist[[i]], aes(x=position, y=index, fill=mean)) +
+            ggplot(data = dflist[[i]], aes(x=position, y=fct_rev(index), fill=mean)) +
             geom_raster() +
             scale_fill_viridis(option='inferno',
                                na.value = "#FFFFFF00",
@@ -82,7 +137,7 @@ main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
                                                     barheight=1, title.hjust=0.5),
                                name=if (logtxn[[i]]){ bquote(bold(log[2] ~ .(assays[[i]]) ~ "signal"))}
                                     else {bquote(bold(.(assays[[i]]) ~ "signal"))}) +
-            scale_y_reverse(expand=c(0.02,0)) +
+            scale_y_discrete(expand=c(0.02, 0)) +
             facet_grid(annotation~group, scale="free_y", space="free_y", switch="y") +
             theme_default
         if (type=="absolute"){
@@ -120,4 +175,6 @@ main(inputs = args$inputs,
      dnstream= args$dnstream,
      scaled_length= args$scaled_length,
      endlabel = paste(args$scaled_length, collapse=" "),
+     cluster = args$cluster,
+     k = args$k,
      outpath = args$output)

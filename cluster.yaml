@@ -10,3 +10,7 @@ __default__:
 compute_matrix:
     time : 10 
     mem : 2000
+
+plot_heatmaps:
+    time: 90
+    mem: 20000

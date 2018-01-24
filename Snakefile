@@ -13,7 +13,8 @@ localrules:
 
 rule all:
     input:
-        expand("datavis/{figure}/{figure}-heatmaps.svg", figure=FIGURES)
+        expand("datavis/{figure}/{figure}-heatmaps.svg", figure=FIGURES),
+        expand("datavis/{figure}/{figure}-metagene-sample-by-anno.svg", figure=FIGURES)
 
 rule make_stranded_annotations:
     input:
@@ -67,7 +68,7 @@ rule cat_matrices:
         (cat {input} > {output}) &> {log}
         """
 
-rule datavis:
+rule plot_heatmaps:
     input:
         lambda wildcards: expand("datavis/{figure}/{figure}_{assay}.tsv.gz", figure=wildcards.figure, assay=FIGURES[wildcards.figure]["include"])
     output:
@@ -80,6 +81,8 @@ rule datavis:
         refptlabel = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["refpointlabel"],
         upstream = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["upstream"],
         dnstream = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["downstream"],
+        cluster = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["cluster"],
+        k = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["k"] if FIGURES[wildcards.figure]["parameters"]["cluster"] else 0
     run:
         if FIGURES[wildcards.figure]["parameters"]["type"]=="scaled":
             scaled_length = FIGURES[wildcards.figure]["parameters"]["scaled_length"]
@@ -87,9 +90,32 @@ rule datavis:
         else:
             scaled_length=0
             endlabel = "WINGARDIUM LEVIOSA"
-        shell("""Rscript scripts/integrated_vis.R -i {input} -c {params.cutoffs} -l {params.logtxn} -a {params.assays} -t {params.mtype} -r {params.refptlabel} -u {params.upstream} -d {params.dnstream} -s {scaled_length} -e {endlabel} -o {output}""")
+        shell("""Rscript scripts/integrated_heatmaps.R -i {input} -c {params.cutoffs} -l {params.logtxn} -a {params.assays} -t {params.mtype} -r {params.refptlabel} -u {params.upstream} -d {params.dnstream} -s {scaled_length} -e {endlabel} -z {params.cluster} -k {params.k} -o {output}""")
 
 
+rule plot_metagenes:
+    input:
+        lambda wildcards: expand("datavis/{figure}/{figure}_{assay}.tsv.gz", figure=wildcards.figure, assay=FIGURES[wildcards.figure]["include"])
+    output:
+        sample_facet_anno = "datavis/{figure}/{figure}-metagene-sample-by-anno.svg",
+        sample_facet_group = "datavis/{figure}/{figure}-metagene-sample-by-group.svg",
+        group_facet_anno = "datavis/{figure}/{figure}-metagene-group-by-anno.svg",
+        group_facet_group = "datavis/{figure}/{figure}-metagene-group-by-group.svg",
+    params:
+        assays = lambda wildcards: [ASSAYS[a]["label"] for a in FIGURES[wildcards.figure]["include"]],
+        trim_pct = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["trim_pct"],
+        mtype = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["type"],
+        refptlabel = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["refpointlabel"],
+        upstream = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["upstream"],
+        dnstream = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["downstream"],
+    run:
+        if FIGURES[wildcards.figure]["parameters"]["type"]=="scaled":
+            scaled_length = FIGURES[wildcards.figure]["parameters"]["scaled_length"]
+            endlabel = FIGURES[wildcards.figure]["parameters"]["endlabel"]
+        else:
+            scaled_length=0
+            endlabel = "WINGARDIUM LEVIOSA"
+        shell("""Rscript scripts/integrated_metagenes.R -i {input} -a {params.assays} -p {params.trim_pct} -t {params.mtype} -r {params.refptlabel} -u {params.upstream} -d {params.dnstream} -s {scaled_length} -e {endlabel} --out1 {output.sample_facet_anno} --out2 {output.sample_facet_group} --out3 {output.group_facet_anno} --out4 {output.group_facet_group}""")
 
 
 
