@@ -14,3 +14,7 @@ compute_matrix:
 plot_heatmaps:
     time: 90
     mem: 20000
+
+plot_metagenes:
+    time: 90
+    mem: 20000

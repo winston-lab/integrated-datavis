@@ -125,7 +125,7 @@ main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
               panel.grid.minor.x = element_line(color="black"),
               panel.grid.major.y = element_blank(),
               panel.grid.minor.y = element_blank(),
-              panel.spacing.x = unit(.5, "cm"))
+              panel.spacing.x = unit(.25, "cm"))
     
     for (i in 1:nassays){
         plotlist[[assays[[i]]]] =
@@ -161,7 +161,7 @@ main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
     
     allplots = plot_grid(plotlist = plotlist, align="h", ncol=min(nassays, 4))
     ggplot2::ggsave(outpath, plot = allplots,
-           width=min(nassays,4)*8, height=ceiling(nassays/4)*20, units="cm",
+           width=min(nassays,4)*12, height=ceiling(nassays/4)*20, units="cm",
            limitsize=FALSE)
 }
 

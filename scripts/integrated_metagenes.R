@@ -40,7 +40,7 @@ main = function(inputs, assays, trim_pct, type, refptlabel,
         theme(text = element_text(size=12, color="black", face="bold"),
               axis.text = element_text(size=12, color="black"),
               axis.text.y = element_text(size=10, face="plain"),
-              axis.title = element_text(face="plain"),
+              axis.title = element_text(size=10, face="plain"),
               strip.text = element_text(size=12, color="black", face="bold"),
               strip.text.y = element_text(angle=-180, hjust=1),
               strip.background = element_blank(),
@@ -82,7 +82,7 @@ main = function(inputs, assays, trim_pct, type, refptlabel,
             geom_line() +
             scale_fill_ptol(guide=guide_legend(label.position="top", label.hjust=0.5)) +
             scale_color_ptol() +
-            ylab("normalized signal") +
+            scale_y_continuous(name = "normalized signal", breaks=c(0,0.5,1)) +
             theme_default
         ggp = x_label(ggp)
         return(ggp)
@@ -98,7 +98,7 @@ main = function(inputs, assays, trim_pct, type, refptlabel,
                           col_names=c('group', 'sample', 'annotation', 'assay',
                                       'index', 'position', 'signal')) %>% 
             mutate_at(vars(group, sample, annotation), funs(fct_inorder(., ordered=TRUE)))
-        
+
         #put the number of each annotation into the annotation name
         ff = tempdf %>% group_by(annotation) %>% summarise(nanno=n_distinct(index))
         tempdf = tempdf %>% left_join(ff, by="annotation") %>%
@@ -108,14 +108,18 @@ main = function(inputs, assays, trim_pct, type, refptlabel,
         tempsample = tempdf %>% group_by(group, sample, annotation, assay, position) %>% 
             summarise(mean = winsor.mean(signal, trim=trim_pct),
                       sem = winsor.sd(signal, trim=trim_pct)/sqrt(n())) %>% 
-            ungroup()
+            ungroup() %>%
+            mutate(sem = sem/(max(mean, na.rm=TRUE)-min(mean, na.rm=TRUE)),
+                   mean = (mean-min(mean, na.rm=TRUE))/(max(mean, na.rm=TRUE)-min(mean, na.rm=TRUE)))
         sampledf = sampledf %>% bind_rows(tempsample)
         rm(tempsample)
         
         tempgroup = tempdf %>% group_by(group, annotation, assay, position) %>%
             summarise(mean = winsor.mean(signal, trim=trim_pct),
                       sem = winsor.sd(signal, trim=trim_pct)/sqrt(n())) %>% 
-            ungroup()
+            ungroup() %>%
+            mutate(sem = sem/(max(mean, na.rm=TRUE)-min(mean, na.rm=TRUE)),
+                   mean = (mean-min(mean, na.rm=TRUE))/(max(mean, na.rm=TRUE)-min(mean, na.rm=TRUE)))
         groupdf = groupdf %>% bind_rows(tempgroup)
         rm(tempdf, tempgroup)
     }
@@ -123,30 +127,33 @@ main = function(inputs, assays, trim_pct, type, refptlabel,
     groupdf = groupdf %>% mutate(assay = fct_inorder(assay, ordered=TRUE))
         
     nannotations = n_distinct(sampledf$annotation)
+    ngroups = n_distinct(sampledf$group)
+    facet_anno_width = 2+2*max(nchar(unique(as.character(sampledf$annotation))))/15+6*nassays
+    facet_group_width = 2+2*max(nchar(unique(as.character(sampledf$group))))/15+6*nassays
     
     sample_facet_anno = ggplot(data = sampledf, aes(x=position, y=mean, ymax=mean+1.96*sem, ymin=mean-1.96*sem,
                                                     group=sample, color=group, fill=group)) +
         facet_grid(annotation~assay, switch="y")
     sample_facet_anno = format_meta(sample_facet_anno)
-    ggsave(out1, plot=sample_facet_anno, width=4+6*nassays, height=4+4*nannotations, units="cm", limitsize=FALSE)
+    ggsave(out1, plot=sample_facet_anno, width=facet_anno_width, height=4+4*nannotations, units="cm", limitsize=FALSE)
     
     sample_facet_group = ggplot(data = sampledf %>% mutate(zz=fct_inorder(paste(sample, annotation), ordered=TRUE)), aes(x=position, y=mean, ymax=mean+1.96*sem, ymin=mean-1.96*sem,
                                 group=zz, color=annotation, fill=annotation)) +
         facet_grid(group~assay, switch="y")
     sample_facet_group = format_meta(sample_facet_group)
-    ggsave(out2, plot=sample_facet_group, width=4+6*nassays, height=4+4*nannotations, units="cm", limitsize=FALSE)
+    ggsave(out2, plot=sample_facet_group, width=facet_group_width, height=4+4*ngroups, units="cm", limitsize=FALSE)
     
     group_facet_anno = ggplot(data = groupdf, aes(x=position, y=mean, ymax=mean+1.96*sem, ymin=mean-1.96*sem,
                                                   color=group, fill=group)) +
         facet_grid(annotation~assay, switch="y")
     group_facet_anno = format_meta(group_facet_anno)
-    ggsave(out3, plot=group_facet_anno, width=4+6*nassays, height=4+4*nannotations, units="cm", limitsize=FALSE)
+    ggsave(out3, plot=group_facet_anno, width=facet_anno_width, height=4+4*nannotations, units="cm", limitsize=FALSE)
     
     group_facet_group = ggplot(data = groupdf, aes(x=position, y=mean, ymax=mean+1.96*sem, ymin=mean-1.96*sem,
                                 group=annotation, color=annotation, fill=annotation)) +
         facet_grid(group~assay, switch="y")
     group_facet_group = format_meta(group_facet_group)
-    ggsave(out4, plot=group_facet_group, width=4+6*nassays, height=4+4*nannotations, units="cm", limitsize=FALSE)
+    ggsave(out4, plot=group_facet_group, width=facet_group_width, height=4+4*ngroups, units="cm", limitsize=FALSE)
 }
 
 main(inputs = args$inputs,
