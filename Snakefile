@@ -82,7 +82,6 @@ rule plot_heatmaps:
         upstream = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["upstream"],
         dnstream = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["downstream"],
         cluster = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["cluster"],
-        k = lambda wildcards: FIGURES[wildcards.figure]["parameters"]["k"] if FIGURES[wildcards.figure]["parameters"]["cluster"] else 0
     run:
         if FIGURES[wildcards.figure]["parameters"]["type"]=="scaled":
             scaled_length = FIGURES[wildcards.figure]["parameters"]["scaled_length"]
@@ -90,7 +89,13 @@ rule plot_heatmaps:
         else:
             scaled_length=0
             endlabel = "WINGARDIUM LEVIOSA"
-        shell("""Rscript scripts/integrated_heatmaps.R -i {input} -c {params.cutoffs} -l {params.logtxn} -a {params.assays} -t {params.mtype} -r {params.refptlabel} -u {params.upstream} -d {params.dnstream} -s {scaled_length} -e {endlabel} -z {params.cluster} -k {params.k} -o {output}""")
+        if FIGURES[wildcards.figure]["parameters"]["cluster"]:
+            cluster_assays = [ASSAYS[a]["label"] for a in FIGURES[wildcards.figure]["parameters"]["cluster_using"]]
+            k = FIGURES[wildcards.figure]["parameters"]["k"]
+        else:
+            cluster_assays = "EVERYTHING-seq"
+            k = 0
+        shell("""Rscript scripts/integrated_heatmaps.R -i {input} -c {params.cutoffs} -l {params.logtxn} -a {params.assays} -t {params.mtype} -r {params.refptlabel} -u {params.upstream} -d {params.dnstream} -s {scaled_length} -e {endlabel} -z {params.cluster} -y {cluster_assays} -k {k} -o {output}""")
 
 
 rule plot_metagenes:

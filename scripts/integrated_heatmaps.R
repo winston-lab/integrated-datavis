@@ -17,6 +17,7 @@ parser$add_argument('-d', '--dnstream', type='integer')
 parser$add_argument('-s', '--scaled_length', type='integer')
 parser$add_argument('-e', '--endlabel', type='character', nargs='+')
 parser$add_argument('-z', '--cluster', type='character')
+parser$add_argument('-y', '--cluster_assays', type='character', nargs='+')
 parser$add_argument('-k', dest='k', type='integer', nargs='+')
 parser$add_argument('-o', '--output', type='character')
 
@@ -34,9 +35,8 @@ format_xaxis = function(refptlabel, upstream, dnstream){
 }
 
 main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
-                upstream, dnstream, scaled_length, cluster, k, endlabel, outpath) {
-    nassays = length(assays)
-    
+                upstream, dnstream, scaled_length, cluster, cluster_assays, k, endlabel, outpath) {
+    nassays = length(assays) 
     dflist = list()
     
     dfcluster = tibble()
@@ -62,14 +62,16 @@ main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
             mutate(annotation = fct_inorder(label, ordered=TRUE)) %>% 
             select(-label)
         
-        if (cluster=="True"){
+        if (cluster=="True" && assays[[i]] %in% cluster_assays){
             dfcluster = dfcluster %>%
                 bind_rows(dflist[[i]] %>%
                               mutate(mean = (mean-min(mean, na.rm=TRUE))/
                                          (max(mean, na.rm=TRUE)-min(mean, na.rm=TRUE))))
         }
+
+        cutoff_val = quantile(dflist[[i]]$signal, probs=cutoff, na.rm=TRUE)
         
-        dflist[[i]] = dflist[[i]] %>% mutate(mean = pmin(mean, cutoff))
+        dflist[[i]] = dflist[[i]] %>% mutate(mean = pmin(mean, cutoff_val))
         
         if (logtxn[[i]]=="True"){
             pcount = 0.1
@@ -115,7 +117,7 @@ main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
               axis.text.x = element_text(size=12, color="black", face="bold", margin = unit(c(0,0,0,0), "cm")),
               axis.title.y = element_blank(),
               strip.text = element_text(size=12, color="black", face="bold"),
-              strip.text.y = element_text(angle=-90),
+              strip.text.y = element_blank(),
               strip.background = element_blank(),
               legend.position="top",
               legend.text = element_text(size=10, face="plain"),
@@ -159,10 +161,31 @@ main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
         }
     }
     
-    allplots = plot_grid(plotlist = plotlist, align="h", ncol=min(nassays, 4))
+    #EXTREMELY JANKY WAY TO GET FACET LABELS...build an invisible plot lmao...
+    facet_label = ggplot(data = dflist[[1]], aes(x=0, y=fct_rev(index), fill=mean)) +
+        geom_raster() +
+        scale_fill_gradient(low="#FFFFFF00", high="#FFFFFF00",
+                            guide=guide_colorbar(title.position="top", barwidth=0.1,
+                                                barheight=1, title.hjust=0.5),
+                           name=bquote(bold("."))) +
+        scale_y_discrete(expand=c(0.02, 0)) +
+        facet_grid(annotation~group, scale="free_y", space="free_y") +
+        theme_default +
+        theme(text = element_text(color="#FFFFFF00"),
+              strip.text.x = element_text(color="#FFFFFF00"),
+              axis.text.x = element_text(color="#FFFFFF00"),
+              panel.grid = element_blank(),
+              strip.text.y = element_text(size=12, color="black", face="bold", angle=0, hjust=1))
+    
+    for (i in 0:((nassays-1) %/% 4)){
+        plotlist = append(plotlist, list(facet_label), after=4*i+i)
+    }
+   
+    allplots = plot_grid(plotlist = plotlist, align="h", ncol=min(nassays+1, 5), axis="trbl")
+    
     ggplot2::ggsave(outpath, plot = allplots,
-           width=min(nassays,4)*12, height=ceiling(nassays/4)*20, units="cm",
-           limitsize=FALSE)
+           width=2+2/15*max(nchar(as.character(unique(dflist[[1]]$annotation))))+min(nassays,4)*12,
+           height=ceiling(nassays/4)*20, units="cm", limitsize=FALSE)
 }
 
 main(inputs = args$inputs,
@@ -174,7 +197,8 @@ main(inputs = args$inputs,
      upstream = args$upstream,
      dnstream= args$dnstream,
      scaled_length= args$scaled_length,
-     endlabel = paste(args$scaled_length, collapse=" "),
+     endlabel = paste(args$endlabel, collapse=" "),
      cluster = args$cluster,
+     cluster_assays = args$cluster_assays,
      k = args$k,
      outpath = args$output)
