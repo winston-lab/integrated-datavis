@@ -69,7 +69,7 @@ main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
                                          (max(mean, na.rm=TRUE)-min(mean, na.rm=TRUE))))
         }
 
-        cutoff_val = quantile(dflist[[i]]$signal, probs=cutoff, na.rm=TRUE)
+        cutoff_val = quantile(dflist[[i]]$mean, probs=cutoff, na.rm=TRUE)
         
         dflist[[i]] = dflist[[i]] %>% mutate(mean = pmin(mean, cutoff_val))
         
