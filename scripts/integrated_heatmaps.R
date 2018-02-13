@@ -47,7 +47,7 @@ main = function(inputs, cutoffs, logtxn, assays, type, refptlabel,
             read_tsv(inputs[[i]], col_names=c('group', 'sample', 'annotation',
                                               'assay', 'index', 'position', 'signal')) %>% 
             mutate(index = paste(annotation, index)) %>% 
-            mutate_at(vars('group', 'sample', 'index'), funs(fct_inorder(., ordered=TRUE))) %>% 
+            mutate_at(vars('group', 'sample', 'annotation', 'index'), funs(fct_inorder(., ordered=TRUE))) %>% 
             group_by(group, annotation, assay, index, position) %>% 
             summarise(mean = mean(signal)) %>% 
             ungroup()
