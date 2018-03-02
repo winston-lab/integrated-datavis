@@ -11,10 +11,10 @@ compute_matrix:
     time : 10 
     mem : 2000
 
-plot_heatmaps:
+plot_figures:
     time: 90
     mem: 20000
 
-plot_metagenes:
-    time: 90
-    mem: 20000
+# plot_metagenes:
+#     time: 90
+#     mem: 20000
