@@ -86,7 +86,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                 group_by(group, annotation, assay, index, position) %>% 
                 summarise(mean=mean(signal)) %>%
                 group_by(group, annotation, assay, index) %>% 
-                mutate(mean=scales::squish(mean)) %>% 
+                mutate(mean=scales::rescale(mean)) %>% 
                 ungroup() %>% 
                 bind_rows(cluster_df, .)
         }
@@ -184,13 +184,13 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
         for (m in 1:n_assays){
             dflist[[m]] = sorted %>%
                 select(index, new_index, annotation) %>% 
-                right_join(dflist[[i]], by=c("annotation", "index")) %>% 
+                right_join(dflist[[m]], by=c("annotation", "index")) %>% 
                 mutate(cluster = as.integer(1))
         }
     }
     else {
         for (i in 1:n_anno){
-            bed %>% filter(annotation=annotations[i]) %>% 
+            bed %>% filter(annotation==annotations[i]) %>% 
                 select(-c(index, annotation)) %>% 
                 write_tsv(path=anno_out[i], col_names=FALSE)
         }
@@ -314,6 +314,11 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
             mutate(sem = sem/(max(mean, na.rm=TRUE)-min(mean, na.rm=TRUE)),
                    mean = (mean-min(mean, na.rm=TRUE))/(max(mean, na.rm=TRUE)-min(mean, na.rm=TRUE))) %>%
             bind_rows(metadf_group, .)
+    }
+
+    if (sortmethod != "cluster"){
+        metadf_sample = metadf_sample %>% mutate(cluster = paste("cluster", cluster))
+        metadf_group = metadf_group %>% mutate(cluster = paste("cluster", cluster))
     }
     metadf_sample = metadf_sample %>% mutate_at(vars(sample, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
     metadf_group = metadf_group %>% mutate_at(vars(assay, cluster), funs(fct_inorder(., ordered=TRUE)))
