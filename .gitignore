@@ -3,6 +3,7 @@ annotations/
 logs/*
 logs/cluster/*
 datavis/
+browser-shots/
 scripts/.snakemake*
 snakemake.err
 snakemake.log

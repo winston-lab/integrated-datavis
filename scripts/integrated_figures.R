@@ -1,4 +1,3 @@
-# library(argparse)
 library(cowplot)
 library(tidyverse)
 library(forcats)
@@ -7,24 +6,6 @@ library(seriation)
 library(psych)
 library(ggthemes)
 library(gtable)
-
-# parser = ArgumentParser()
-# parser$add_argument('-i', '--inputs', type='character', nargs='+')
-# parser$add_argument('-c', '--cutoffs', type='double', nargs='+')
-# parser$add_argument('-l', '--logtxn', type='character', nargs='+')
-# parser$add_argument('-a', '--assays', type='character', nargs='+')
-# parser$add_argument('-t', '--type', type='character')
-# parser$add_argument('-r', '--refptlabel', type='character', nargs='+')
-# parser$add_argument('-u', '--upstream', type='integer')
-# parser$add_argument('-d', '--dnstream', type='integer')
-# parser$add_argument('-s', '--scaled_length', type='integer')
-# parser$add_argument('-e', '--endlabel', type='character', nargs='+')
-# parser$add_argument('-z', '--cluster', type='character')
-# parser$add_argument('-y', '--cluster_assays', type='character', nargs='+')
-# parser$add_argument('-k', dest='k', type='integer', nargs='+')
-# parser$add_argument('-o', '--output', type='character')
-# 
-# args = parser$parse_args()
 
 format_xaxis = function(refptlabel, upstream, dnstream){
     function(x){
@@ -114,8 +95,6 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                 spread(cid, mean, fill=0) %>% 
                 remove_rownames() %>%
                 column_to_rownames(var="index")
-                # select(-index)
-                # # column_to_rownames(var="index")
             
             d = dist(rr, method="euclidean")
             l = kmeans(d, k[i])[["cluster"]]
@@ -136,8 +115,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                                      cluster=seriated[["labels"]],
                                      og_index=seriated[["order"]]) %>% 
                     mutate(new_index = row_number())
-            }
-            else if (k[i]==1){
+            } else if (k[i]==1){
                 seriated = seriate(d, method="OLO")
                 sub_reorder = tibble(annotation=annotations[i],
                                      cluster=as.integer(1),
@@ -167,8 +145,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                 ungroup() %>% 
                 arrange(annotation, cluster, new_index)
         }
-    }
-    else if (sortmethod=="length"){
+    } else if (sortmethod=="length"){
         sorted = bed %>% group_by(annotation) %>% 
             arrange(end-start, .by_group=TRUE) %>% 
             rowid_to_column(var="new_index") %>% 
@@ -187,8 +164,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                 right_join(dflist[[m]], by=c("annotation", "index")) %>% 
                 mutate(cluster = as.integer(1))
         }
-    }
-    else {
+    } else {
         for (i in 1:n_anno){
             bed %>% filter(annotation==annotations[i]) %>% 
                 select(-c(index, annotation)) %>% 
@@ -208,7 +184,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
         
         #account for datasets missing conditions
         if (! all(conditions %in% hmap_df[["group"]])) {
-            hmap_df = hmap_df %>% complete(group=c("spt6+", "spt6-1004-37C"),
+            hmap_df = hmap_df %>% complete(group=conditions,
                                            fill=list(annotation=hmap_df %>% slice(1) %>% pull(annotation),
                                                      cluster=hmap_df %>% slice(1) %>% pull(cluster))) %>%
                 mutate(group = ordered(group, levels=conditions))
@@ -218,13 +194,18 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
             group_by(group, annotation, assay, position, cluster, new_index) %>% 
             summarise(mean = mean(signal))
                 
+        #if sortmethod isn't length, fill in missing data with minimum signal
+        if (sortmethod != "length"){
+            hmap_df = hmap_df %>% group_by(group, annotation, assay, cluster) %>% 
+                complete(new_index, position, fill=list(mean=min(hmap_df[["mean"]], na.rm=TRUE)))
+        }
+        
         climit = hmap_df %>% filter(mean > 0) %>% pull(mean) %>% quantile(probs=cutoff_pcts[i], na.rm=TRUE)
         
         if (logtxn[i]) {
             heatmaps[[assays[i]]] =
                 ggplot(data = hmap_df, aes(x=position, y=new_index, fill=log2(mean+pcount[i])))
-        }
-        else {
+        } else {
             heatmaps[[assays[i]]] =
                 ggplot(data = hmap_df, aes(x=position, y=new_index, fill=mean))
         }
@@ -241,8 +222,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
         if(max(k)>1){
             heatmaps[[i]] = heatmaps[[i]] +
                 facet_grid(annotation+cluster~group, scale="free_y", space="free_y", switch="y")
-        }
-        else {
+        } else {
             heatmaps[[i]] = heatmaps[[i]] +
                 facet_grid(annotation~group, scale="free_y", space="free_y", switch="y")
         }
@@ -256,8 +236,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                                    name= paste("distance from", refptlabel, 
                                                if_else(upstream>500 | dnstream>500, "(kb)", "(nt)")),
                                    expand=c(0.05, 0))
-        }
-        else {
+        } else {
             heatmaps[[i]] = heatmaps[[i]] +
                 scale_x_continuous(breaks = c(0, (scaled_length/2)/1000, scaled_length/1000),
                                    labels = c(refptlabel, "", endlabel),
@@ -281,7 +260,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
               strip.text.x = element_text(color="#FFFFFF00"),
               axis.text.x = element_text(color="#FFFFFF00"),
               panel.grid = element_blank(),
-              strip.text.y = element_text(size=12, color="black", face="bold", angle=0))
+              strip.text.y = element_text(size=12, color="black", face="bold", angle=0, hjust=1))
     
     for (i in 0:((n_assays-1) %/% 4)){
         heatmaps = append(heatmaps, list(facet_label), after=4*i+i)
@@ -320,8 +299,8 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
         metadf_sample = metadf_sample %>% mutate(cluster = paste("cluster", cluster))
         metadf_group = metadf_group %>% mutate(cluster = paste("cluster", cluster))
     }
-    metadf_sample = metadf_sample %>% mutate_at(vars(sample, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
-    metadf_group = metadf_group %>% mutate_at(vars(assay, cluster), funs(fct_inorder(., ordered=TRUE)))
+    metadf_sample = metadf_sample %>% mutate_at(vars(group, sample, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
+    metadf_group = metadf_group %>% mutate_at(vars(group, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
 
     theme_metagene = theme_light() +
         theme(text = element_text(size=12, color="black", face="bold"),
@@ -372,13 +351,11 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                                             t = t, b = b, l = 2, r = 2)
                 }
             }
-        }
-        else if(level==2){
+        } else if(level==2){
             if (outer=="annotation"){
                 outer_grob_indices = 1+lag(k, default=0)
                 n_outer = n_anno
-            }
-            else if (outer=="replicate"){
+            } else if (outer=="replicate"){
                 outer_grob_indices = seq(1, length(strip_loc), sum(k))
                 n_outer = max_reps
             }
@@ -386,13 +363,11 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                 if (outer=="annotation"){
                     t=((k[idx]*2))*(idx-1)+1
                     b=((k[idx]*2))*(idx)-1
-                }
-                else if (outer=="replicate"){
+                } else if (outer=="replicate"){
                     if (inner=="cluster"){
                         t=((k*2))*(idx-1)+1
                         b=((k*2))*(idx)-1
-                    }
-                    else{
+                    } else{
                         t = (n_anno*2)*(idx-1)+1
                         b = (n_anno*2)*(idx)-1
                     }
@@ -408,7 +383,12 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
 
     meta = function(ggp, nest_right=TRUE){
         ggp = ggp +
-            geom_vline(xintercept=0, size=1, color="grey65") +
+            geom_vline(xintercept=0, size=1, color="grey65")
+        if (ptype=="scaled"){
+            ggp = ggp +
+                geom_vline(xintercept=scaled_length, size=1, color="grey65")
+        }
+        ggp = ggp +
             geom_ribbon(alpha=0.4, size=0) +
             geom_line() +
             scale_y_continuous(name="relative signal", breaks = scales::pretty_breaks(n=3)) +
@@ -423,8 +403,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                                    name=paste("distance from", refptlabel, if(upstream>500 | dnstream>500){"(kb)"} else {"(nt)"}),
                                    limits = c(-upstream/1000, dnstream/1000),
                                    expand=c(0,0))
-        }
-        else {
+        } else {
             ggp = ggp +
                 scale_x_continuous(breaks=c(0, (scaled_length/2)/1000, scaled_length/1000),
                                    labels=c(refptlabel, "", endlabel),
@@ -462,9 +441,6 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
     ggsave(meta_group_bycondition_out, plot=meta_group_bycondition, width=2+n_assays*10, height=1.5*sum(k)+4+4.5*n_distinct(dflist[[1]][["group"]]), units="cm")
 }
 
-print(snakemake@input)
-print(snakemake@params)
-
 main(inputs = snakemake@input[["matrices"]],
      anno_paths = snakemake@input[["annotations"]],
      conditions = snakemake@params[["conditions"]],
@@ -491,3 +467,4 @@ main(inputs = snakemake@input[["matrices"]],
      meta_sample_byannotation_out = snakemake@output[["sample_facet_anno"]],
      meta_group_byannotation_out = snakemake@output[["group_facet_anno"]],
      meta_group_bycondition_out = snakemake@output[["group_facet_group"]])
+
