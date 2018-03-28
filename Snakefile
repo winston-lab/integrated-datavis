@@ -46,10 +46,10 @@ rule compute_matrix:
     params:
         group = lambda wc: ASSAYS[wc.assay]["coverage"][wc.sample]["group"],
         refpoint = lambda wc: "TSS" if FIGURES[wc.figure]["parameters"]["type"]=="scaled" else FIGURES[wc.figure]["parameters"]["refpoint"],
-        upstream = lambda wc: FIGURES[wc.figure]["parameters"]["upstream"] + ASSAYS[wc.assay]["binsize"],
-        dnstream = lambda wc: FIGURES[wc.figure]["parameters"]["downstream"] + ASSAYS[wc.assay]["binsize"],
+        upstream = lambda wc: FIGURES[wc.figure]["parameters"]["upstream"] + FIGURES[wc.figure]["include"][wc.assay]["binsize"],
+        dnstream = lambda wc: FIGURES[wc.figure]["parameters"]["downstream"] + FIGURES[wc.figure]["include"][wc.assay]["binsize"],
         scaled_length = lambda wc: 0 if FIGURES[wc.figure]["parameters"]["type"]=="absolute" else FIGURES[wc.figure]["parameters"]["scaled_length"],
-        binsize = lambda wc: ASSAYS[wc.assay]["binsize"],
+        binsize = lambda wc: FIGURES[wc.figure]["include"][wc.assay]["binsize"],
         binstat = lambda wc: ASSAYS[wc.assay]["binstat"],
         nan_afterend = lambda wc: [] if FIGURES[wc.figure]["parameters"]["type"]=="scaled" or not FIGURES[wc.figure]["parameters"]["nan_afterend"] else "--nanAfterEnd",
         anno_label = lambda wc: FIGURES[wc.figure]["annotations"][wc.annotation]["label"]

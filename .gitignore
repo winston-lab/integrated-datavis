@@ -10,6 +10,7 @@ snakemake.log
 rulegraph.svg
 dag.svg
 Rplots.pdf
+mogrify.log
 
 config.yaml
 
