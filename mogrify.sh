@@ -6,7 +6,7 @@
 #SBATCH -n 1
 #SBATCH -e mogrify.err
 #SBATCH -o mogrify.log
-#SBATCH -J mogrify-netseq
+#SBATCH -J mogrify-data-integration
 
 source activate svg2png
 find . -name "*.svg" ! -path "*.git*" ! -path "*.snakemake*" ! -name "rulegraph.svg" ! -name "dag.svg" | while read svg; do
@@ -16,7 +16,7 @@ find . -name "*.svg" ! -path "*.git*" ! -path "*.snakemake*" ! -name "rulegraph.
         if [ $svg -nt $png ]; then
             rm $png
             echo "updating png of $svg"
-            dim=$(grep -oP "(?<=viewBox='0 0 ).*(?='>)" $svg)
+            dim=$(grep -oP "(?<=viewBox=['\"]0 0 ).*?(?=['\"])" $svg)
             width=$(echo $dim | cut -d ' ' -f1 | paste - <(echo \*326\/96) | bc -l)
             height=$(echo $dim | cut -d ' ' -f2 | paste - <(echo \*326\/96) | bc -l)
             svg2png -w $width -h $height -o $png $svg
@@ -26,7 +26,7 @@ find . -name "*.svg" ! -path "*.git*" ! -path "*.snakemake*" ! -name "rulegraph.
         #if png doesn't exist, make new png
         # sbatch -p short -t 60 --mem-per-cpu=4G -J "create $png" -o mogrify.log -e mogrify.err --open-mode=append convert.sh $svg $png
         echo "creating png of $svg"
-        dim=$(grep -oP "(?<=viewBox='0 0 ).*(?='>)" $svg)
+        dim=$(grep -oP "(?<=viewBox=['\"]0 0 ).*?(?=['\"])" $svg)
         width=$(echo $dim | cut -d ' ' -f1 | paste - <(echo \*326\/96) | bc -l)
         height=$(echo $dim | cut -d ' ' -f2 | paste - <(echo \*326\/96) | bc -l)
         svg2png -w $width -h $height -o $png $svg

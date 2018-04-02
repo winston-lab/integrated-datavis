@@ -11,6 +11,7 @@ rulegraph.svg
 dag.svg
 Rplots.pdf
 mogrify.log
+mogrify.err
 
 config.yaml
 
