@@ -221,10 +221,10 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
             theme_heatmap
         if(max(k)>1){
             heatmaps[[i]] = heatmaps[[i]] +
-                facet_grid(annotation+cluster~group, scale="free_y", space="free_y", switch="y")
+                facet_grid(annotation+cluster~group, scale="free_y", space="free_y", switch="y", drop=FALSE)
         } else {
             heatmaps[[i]] = heatmaps[[i]] +
-                facet_grid(annotation~group, scale="free_y", space="free_y", switch="y")
+                facet_grid(annotation~group, scale="free_y", space="free_y", switch="y", drop=FALSE)
         }
         
         if (ptype=="absolute"){
