@@ -79,7 +79,8 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
     bed = tibble()
     for (i in 1:n_anno){
         bed = read_tsv(anno_paths[i], col_names=c('chrom', 'start', 'end', 'name', 'score', 'strand')) %>% 
-            mutate(annotation=annotations[i]) %>% 
+            mutate(annotation=annotations[i],
+                   score = as.character(score)) %>% 
             rowid_to_column(var="index") %>% 
             bind_rows(bed, .)
     }
