@@ -417,16 +417,33 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
         return(ggp)
     }
     
-    meta_sample_byannotation = (ggplot(data = metadf_sample, aes(x=position, y=mean, ymin=mean-1.96*sem, ymax=mean+1.96*sem,
-                                                                group=sample, color=group, fill=group)) +
-        facet_grid(annotation+cluster~assay)) %>% meta()
-    
-    meta_group_byannotation = (ggplot(data = metadf_group, aes(x=position, y=mean, ymin=mean-1.96*sem, ymax=mean+1.96*sem,
-                                     group=group, color=group, fill=group)) +
-        facet_grid(annotation+cluster~assay)) %>% meta()
+    meta_sample_byannotation = ggplot(data = metadf_sample,
+                                      aes(x=position, y=mean, ymin=mean-1.96*sem, ymax=mean+1.96*sem,
+                                          group=sample, color=group, fill=group))
+
+    meta_group_byannotation = ggplot(data = metadf_group,
+                                     aes(x=position, y=mean, ymin=mean-1.96*sem, ymax=mean+1.96*sem,
+                                         group=group, color=group, fill=group))
+    if (n_anno==1 && max(k)==1){
+        meta_sample_byannotation = meta(meta_sample_byannotation + facet_wrap(~assay, ncol=4),
+                                        nest_right=FALSE)
+        meta_group_byannotation = meta(meta_group_byannotation + facet_wrap(~assay, ncol=4),
+                                       nest_right=FALSE)
+    } else {
+        meta_sample_byannotation = meta(meta_sample_byannotation + facet_grid(annotation+cluster~assay))
+        meta_group_byannotation = meta(meta_group_byannotation + facet_grid(annotation+cluster~assay))
+    }
         
-    ggsave(meta_sample_byannotation_out, plot=meta_sample_byannotation, width=2+n_assays*10, height=3+sum(k)*4.5, units="cm")
-    ggsave(meta_group_byannotation_out, plot=meta_group_byannotation, width=2+n_assays*10, height=3+sum(k)*4.5, units="cm")
+    ggplot2::ggsave(meta_sample_byannotation_out,
+                    plot=meta_sample_byannotation,
+                    width= if(n_anno==1 && max(k)==1){42} else {2+n_assays*10},
+                    height= if(n_anno==1 && max(k)==1){2+8.5*ceiling(n_assays/4)} else {3+sum(k)*4.5},
+                    units="cm", limitsize=FALSE)
+    ggplot2::ggsave(meta_group_byannotation_out,
+                    plot=meta_group_byannotation,
+                    width= if(n_anno==1 && max(k)==1){42} else {2+n_assays*10},
+                    height= if(n_anno==1 && max(k)==1){2+8.5*ceiling(n_assays/4)} else {3+sum(k)*4.5},
+                    units="cm", limitsize=FALSE)
 
     meta_group_bycondition = (ggplot(data = metadf_group %>% mutate(clabel = fct_inorder(paste0(annotation, ", ", cluster), ordered=TRUE)),
                 aes(x=position, y=mean, ymin=mean-1.96*sem, ymax=mean+1.96*sem,
@@ -438,7 +455,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
               strip.text.y = element_text(angle=180, hjust=1),
               plot.margin = margin(0.5, 1, 0.5, 0.5, "cm")) 
     
-    ggsave(meta_group_bycondition_out, plot=meta_group_bycondition, width=2+n_assays*10, height=1.5*sum(k)+4+4.5*n_distinct(dflist[[1]][["group"]]), units="cm")
+    ggplot2::ggsave(meta_group_bycondition_out, plot=meta_group_bycondition, width=2+n_assays*10, height=1.5*sum(k)+4+4.5*n_distinct(dflist[[1]][["group"]]), units="cm", limitsize=FALSE)
 }
 
 main(inputs = snakemake@input[["matrices"]],
