@@ -30,7 +30,7 @@ rule make_stranded_annotations:
         lambda wc : FIGURES[wc.figure]["annotations"][wc.annotation]["path"]
     output:
         "annotations/{figure}/{annotation}-STRANDED.{ext}"
-    log : "logs/make_stranded_annotations/make_stranded_annotations-{figure}_{annotation}.log"
+    log : "logs/make_stranded_annotations/make_stranded_annotations-{figure}_{annotation}_{ext}.log"
     shell: """
         (bash scripts/makeStrandedBed.sh {input} > {output}) &> {log}
         """

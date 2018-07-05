@@ -1,6 +1,6 @@
 __default__:
     queue : "short"
-    time : 60 
+    time : 60
     n : 1
     mem : 2000
     name : "{rule}.{wildcards}"
@@ -8,11 +8,11 @@ __default__:
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 compute_matrix:
-    time : 10 
+    time : 10
     mem : 2000
 
 plot_figures:
-    time: 90
+    time: 120
     mem: 20000
 
 # plot_metagenes:
