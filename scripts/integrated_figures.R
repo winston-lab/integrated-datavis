@@ -1,6 +1,7 @@
 library(cowplot)
 library(tidyverse)
 library(forcats)
+library(magrittr)
 library(viridis)
 library(seriation)
 library(psych)
@@ -49,7 +50,7 @@ theme_metagene = theme_light() +
           legend.text = element_text(size=12),
           panel.spacing.x = unit(0.5, "cm"))
 
-main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, pcount, assays, ptype, refptlabel,
+main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, spread_type, trim_pcts, logtxn, pcount, assays, ptype, refptlabel,
                 upstream, dnstream, scaled_length, sortmethod, cluster_assays, cluster_five, cluster_three, k,
                 cmap, endlabel, anno_out, cluster_out, heatmap_out, meta_sample_byannotation_out,
                 meta_group_byannotation_out, meta_group_bycondition_out) {
@@ -213,7 +214,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
                 complete(new_index, position, fill=list(mean=min(hmap_df[["mean"]], na.rm=TRUE)))
         }
 
-        climit = hmap_df %>% filter(mean > 0) %>% pull(mean) %>% quantile(probs=cutoff_pcts[i], na.rm=TRUE)
+        cutoffs = hmap_df %>% pull(mean) %>% quantile(probs=c(cutoff_low[i], cutoff_high[i]), na.rm=TRUE)
 
         if (logtxn[i]) {
             heatmaps[[assays[i]]] =
@@ -225,7 +226,7 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
         heatmaps[[i]] = heatmaps[[i]] +
             geom_raster() +
             scale_fill_viridis(option=cmap, na.value = "#FFFFFF00",
-                               limits = c(NA, climit), oob=scales::squish,
+                               limits = cutoffs, oob=scales::squish,
                                guide=guide_colorbar(title.position="top", barwidth=12,
                                                     barheight=1, title.hjust=0.5),
                                name=if (logtxn[[i]]){ bquote(bold(log[2] ~ .(assays[[i]]) ~ "signal"))}
@@ -289,30 +290,57 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
     metadf_group = tibble()
 
     for (i in 1:n_assays){
-        metadf_sample = dflist[[i]] %>%
-            group_by(group, sample, annotation, assay, position, cluster) %>%
-            summarise(mid = median(signal, na.rm=TRUE),
-                      low = quantile(signal, trim_pcts[i], na.rm=TRUE),
-                      high = quantile(signal, 1-trim_pcts[i], na.rm=TRUE)) %>%
-            ungroup() %>%
-            mutate(y_min = min(low, na.rm = TRUE),
-                   y_range = max(high, na.rm=TRUE)-y_min) %>%
-            mutate_at(vars(low, mid, high), funs((.-y_min)/y_range)) %>%
-            select(-c(y_min, y_range)) %>%
-            bind_rows(metadf_sample, .)
+        temp_metadf_sample = dflist[[i]] %>%
+            # mutate(signal = scales::rescale(signal)) %>%
+            group_by(group, sample, annotation, assay, position, cluster)
+        if (spread_type=="conf_int"){
+            temp_metadf_sample %<>%
+                summarise(mid = winsor.mean(signal, trim=trim_pcts[i]),
+                          sd = winsor.sd(signal, trim=trim_pcts[i])) %>%
+                mutate(high = mid+sd,
+                       low = mid-sd)
+        } else if (spread_type=="quantile"){
+            temp_metadf_sample %<>%
+                summarise(mid = median(signal, na.rm=TRUE),
+                          low = quantile(signal, trim_pcts[i], na.rm=TRUE),
+                          high = quantile(signal, 1-trim_pcts[i], na.rm=TRUE))
+        }
 
-        metadf_group = dflist[[i]] %>%
-            mutate(signal = scales::rescale(signal)) %>%
-            group_by(group, annotation, assay, position, cluster) %>%
-            summarise(mid = median(signal),
-                      low = quantile(signal, trim_pcts[i]),
-                      high = quantile(signal, 1-trim_pcts[i])) %>%
+        temp_metadf_sample %<>%
             ungroup() %>%
             mutate(y_min = min(low, na.rm = TRUE),
                    y_range = max(high, na.rm=TRUE)-y_min) %>%
             mutate_at(vars(low, mid, high), funs((.-y_min)/y_range)) %>%
-            select(-c(y_min, y_range)) %>%
-            bind_rows(metadf_group, .)
+            select(-c(y_min, y_range))
+
+        metadf_sample %<>% bind_rows(temp_metadf_sample)
+
+        if (spread_type=="conf_int"){
+            temp_metadf_group = temp_metadf_sample %>%
+                group_by(group, annotation, assay, position, cluster) %>%
+                summarise(sd = sd(mid),
+                          n = n_distinct(sample),
+                          mid = mean(mid)) %>%
+                mutate(sem = sqrt((n-1)/2)*gamma((n-1)/2)/gamma(n/2)*sd/sqrt(n),
+                       high = mid + 1.96*sem,
+                       low = mid - 1.96*sem)
+        } else if (spread_type=="quantile") {
+            temp_metadf_group = dflist[[i]] %>%
+                # mutate(signal = scales::rescale(signal)) %>%
+                group_by(group, annotation, assay, position, cluster) %>%
+                summarise(mid = median(signal),
+                          low = quantile(signal, trim_pcts[i]),
+                          high = quantile(signal, 1-trim_pcts[i]))
+        }
+
+        temp_metadf_group %<>%
+            ungroup() %>%
+            mutate(y_min = min(low, na.rm = TRUE),
+                   y_range = max(high, na.rm=TRUE)-y_min) %>%
+            mutate_at(vars(low, mid, high), funs((.-y_min)/y_range)) %>%
+            select(-c(y_min, y_range))
+
+        metadf_group %<>% bind_rows(temp_metadf_group)
     }
 
     if (sortmethod != "cluster"){
@@ -468,12 +496,14 @@ main = function(inputs, anno_paths, conditions, cutoff_pcts, trim_pcts, logtxn, 
 main(inputs = snakemake@input[["matrices"]],
      anno_paths = snakemake@input[["annotations"]],
      conditions = snakemake@params[["conditions"]],
-     cutoff_pcts = snakemake@params[["cutoffs"]],
+     cutoffs_low = snakemake@params[["cutoffs_low"]],
+     cutoffs_high = snakemake@params[["cutoffs_high"]],
+     spread_type = snakemake@params[["spread_type"]],
      trim_pcts = snakemake@params[["trim_pct"]],
      logtxn = snakemake@params[["logtxn"]],
      pcount = snakemake@params[["pcount"]],
      assays = snakemake@params[["assays"]],
-     ptype = snakemake@params[["mtype"]],
+     ptype = snakemake@params[["plot_type"]],
      refptlabel = snakemake@params[["refptlabel"]],
      upstream = snakemake@params[["upstream"]],
      dnstream= snakemake@params[["dnstream"]],
@@ -491,3 +521,4 @@ main(inputs = snakemake@input[["matrices"]],
      meta_sample_byannotation_out = snakemake@output[["sample_facet_anno"]],
      meta_group_byannotation_out = snakemake@output[["group_facet_anno"]],
      meta_group_bycondition_out = snakemake@output[["group_facet_group"]])
+

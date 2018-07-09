@@ -37,7 +37,7 @@ rule make_stranded_annotations:
 
 rule compute_matrix:
     input:
-        annotation = lambda wc: "annotations/" + wc.figure + "/" + wc.annotation + "-STRANDED" + os.path.splitext(FIGURES[wc.figure]["annotations"][wc.annotation]["path"])[1] if ASSAYS[wc.assay]["stranded"] else FIGURES[wc.figure]["annotations"][wc.annotation]["path"],
+        annotation = lambda wc: "annotations/{figure}/{annotation}-STRANDED".format(**wc) + os.path.splitext(FIGURES[wc.figure]["annotations"][wc.annotation]["path"])[1] if ASSAYS[wc.assay]["stranded"] else FIGURES[wc.figure]["annotations"][wc.annotation]["path"],
         bw = lambda wc: ASSAYS[wc.assay]["coverage"][wc.sample]["path"]
     output:
         dtfile = temp("datavis/{figure}/{annotation}_{assay}_{sample}.mat.gz"),
@@ -83,15 +83,17 @@ rule plot_figures:
         group_facet_anno = "datavis/{figure}/{figure}-metagene-group-facet-anno.svg",
         group_facet_group = "datavis/{figure}/{figure}-metagene-group-facet-group.svg",
     params:
-        annotations_out = lambda wc: ["datavis/" + wc.figure + "/" + annotation + "_cluster-" + str(cluster) + ".bed" for annotation in FIGURES[wc.figure]["annotations"] for cluster in range(1, FIGURES[wc.figure]["annotations"][annotation]["n_clusters"]+1)],
-        clusters_out = lambda wc: ["datavis/" + wc.figure + "/" + annotation + ".pdf" for annotation in FIGURES[wc.figure]["annotations"]],
+        annotations_out = lambda wc: [f"datavis/{wc.figure}/{annotation}_cluster-" + str(cluster) + ".bed" for annotation in FIGURES[wc.figure]["annotations"] for cluster in range(1, FIGURES[wc.figure]["annotations"][annotation]["n_clusters"]+1)],
+        clusters_out = lambda wc: [f"datavis/{wc.figure}/" + annotation + ".pdf" for annotation in FIGURES[wc.figure]["annotations"]],
         conditions = lambda wc: [FIGURES[wc.figure]["control"], FIGURES[wc.figure]["condition"]],
-        cutoffs = lambda wc: [ASSAYS[a]["cutoff"] for a in FIGURES[wc.figure]["include"]],
-        trim_pct = lambda wc: [ASSAYS[a]["trim_pct"] for a in FIGURES[wc.figure]["include"]],
+        cutoffs_low = lambda wc: [v["cutoff_low"] for k,v in FIGURES[wc.figure]["include"].items()],
+        cutoffs_high = lambda wc: [v["cutoff_high"] for k,v in FIGURES[wc.figure]["include"].items()],
+        trim_pct = lambda wc: [v["trim_pct"] for k,v in FIGURES[wc.figure]["include"].items()],
         logtxn = lambda wc: [ASSAYS[a]["log_transform"] for a in FIGURES[wc.figure]["include"]],
         pcount = lambda wc: [0 if not ASSAYS[a]["log_transform"] else ASSAYS[a]["pseudocount"] for a in FIGURES[wc.figure]["include"]],
         assays = lambda wc: [ASSAYS[a]["label"] for a in FIGURES[wc.figure]["include"]],
-        mtype = lambda wc: FIGURES[wc.figure]["parameters"]["type"],
+        spread_type = lambda wc: FIGURES[wc.figure]["parameters"]["spread_type"],
+        plot_type = lambda wc: FIGURES[wc.figure]["parameters"]["type"],
         refptlabel = lambda wc: FIGURES[wc.figure]["parameters"]["refpointlabel"],
         upstream = lambda wc: FIGURES[wc.figure]["parameters"]["upstream"],
         dnstream = lambda wc: FIGURES[wc.figure]["parameters"]["downstream"],
@@ -103,6 +105,7 @@ rule plot_figures:
         cluster_five = lambda wc: [] if FIGURES[wc.figure]["parameters"]["arrange"] != "cluster" else FIGURES[wc.figure]["parameters"]["cluster_five"],
         cluster_three = lambda wc: [] if FIGURES[wc.figure]["parameters"]["arrange"] != "cluster" else FIGURES[wc.figure]["parameters"]["cluster_three"],
         k = lambda wc: [v["n_clusters"] for k,v in FIGURES[wc.figure]["annotations"].items()]
+    conda: "envs/tidyverse.yaml"
     script:
         "scripts/integrated_figures.R"
 
@@ -129,7 +132,7 @@ rule make_singlegene_anno_stranded:
 
 rule compute_matrix_singlegene:
     input:
-        annotation = lambda wc: "browser-shots/" + wc.gene + "/" + wc.gene + "-STRANDED.bed" if ASSAYS[wc.assay]["stranded"] else "browser-shots/" + wc.gene + "/" + wc.gene + ".bed",
+        annotation = lambda wc: "browser-shots/{gene}/{gene}".format(**wc) + "-STRANDED.bed" if ASSAYS[wc.assay]["stranded"] else "browser-shots/{gene}/{gene}.bed".format(**wc),
         bw = lambda wc: ASSAYS[wc.assay]["coverage"][wc.sample]["path"]
     output:
         dtfile = temp("browser-shots/{gene}/{gene}_assay-{assay}_sample-{sample}.mat.gz"),
