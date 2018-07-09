@@ -1,0 +1,195 @@
+---
+# configuration file for integrated data visualization pipeline
+#
+# relative paths are okay
+#
+#
+
+# assay metadata
+assays:
+    GC-pct:  # [STRING] name of assay, for file-naming purposes
+        label: GC%  # [STRING] label for assay in plots
+        stranded: False  # [True|False] are coverage tracks stranded? i.e. "chrI-plus"
+        binstat: mean  # [mean|median|min|max|sum|std] operation used to summarise data
+        log_transform: False  # [True|False] log transform data?
+        coverage:
+            WT-37C:  # [STRING] sample name
+                path: ../genome/S_cerevisiae.R64-2-1-GC_pct.bw  # path to coverage file
+                group: spt6+  # [STRING] sample group tag
+            spt6-1004-37C:  # [STRING] sample name
+                path: ../genome/S_cerevisiae.R64-2-1-GC_pct.bw  # path to coverage file
+                group: spt6-1004-37C  # [STRING] sample group tag
+    TSS-seq-sense:
+        label: sense TSS-seq
+        stranded: True
+        binstat: mean
+        log_transform: False
+        coverage:
+            WT-37C-1:
+                path: ../tss-seq/coverage/spikenorm/WT-37C-1_tss-seq-spikenorm-SENSE.bw
+                group: spt6+
+            WT-37C-2:
+                path: ../tss-seq/coverage/spikenorm/WT-37C-2_tss-seq-spikenorm-SENSE.bw
+                group: spt6+
+            spt6-1004-37C-1:
+                path: ../tss-seq/coverage/spikenorm/spt6-1004-37C-1_tss-seq-spikenorm-SENSE.bw
+                group: spt6-1004-37C
+            spt6-1004-37C-2:
+                path: ../tss-seq/coverage/spikenorm/spt6-1004-37C-2_tss-seq-spikenorm-SENSE.bw
+                group: spt6-1004-37C
+    TSS-seq-antisense:
+        label: antisense TSS-seq
+        stranded: True
+        binstat: mean
+        log_transform: False
+        coverage:
+            WT-37C-1:
+                path: ../tss-seq/coverage/spikenorm/WT-37C-1_tss-seq-spikenorm-ANTISENSE.bw
+                group: spt6+
+            WT-37C-2:
+                path: ../tss-seq/coverage/spikenorm/WT-37C-2_tss-seq-spikenorm-ANTISENSE.bw
+                group: spt6+
+            spt6-1004-37C-1:
+                path: ../tss-seq/coverage/spikenorm/spt6-1004-37C-1_tss-seq-spikenorm-ANTISENSE.bw
+                group: spt6-1004-37C
+            spt6-1004-37C-2:
+                path: ../tss-seq/coverage/spikenorm/spt6-1004-37C-2_tss-seq-spikenorm-ANTISENSE.bw
+                group: spt6-1004-37C
+    TFIIB-ChIP-nexus-protection:
+        label: TFIIB ChIP-nexus
+        stranded: False
+        binstat: mean
+        log_transform: False
+        coverage:
+            WT-37C-1:
+                path: ../chipnexus-tfiib/coverage/libsizenorm/WT-37C-1_tfiib-chipnexus-libsizenorm-protection.bw
+                group: spt6+
+            WT-37C-2:
+                path: ../chipnexus-tfiib/coverage/libsizenorm/WT-37C-2_tfiib-chipnexus-libsizenorm-protection.bw
+                group: spt6+
+            spt6-1004-37C-1:
+                path: ../chipnexus-tfiib/coverage/libsizenorm/spt6-1004-37C-1_tfiib-chipnexus-libsizenorm-protection.bw
+                group: spt6-1004-37C
+            spt6-1004-37C-2:
+                path: ../chipnexus-tfiib/coverage/libsizenorm/spt6-1004-37C-2_tfiib-chipnexus-libsizenorm-protection.bw
+                group: spt6-1004-37C
+
+# figure parameters
+figures:
+    verified-transcripts-nonoverlapping-slopR300-TSS:  # name of figure, for filenaming purposes
+        annotations:
+            verified-genes:  # name of annotation, for filenaming purposes. More than one annotation can be plotted
+                path: ../genome/annotations/Scer_transcripts_w_verifiedORFs-nonoverlapping_slopR300.bed  # path to annotation
+                label: nonoverlapping verified coding genes  # [STRING] label for annotation
+                n_clusters: 1  # [INT] number of clusters to separate data into.
+        include:
+            TSS-seq-sense:  # name of assay. Must be present in the assay metadata section above.
+                binsize: 20  # [INT] binsize in bases for summarizing data
+                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
+                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
+                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+            TSS-seq-antisense:
+                binsize: 20  # [INT] binsize in bases for summarizing data
+                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
+                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
+                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+            TFIIB-ChIP-nexus-protection:
+                binsize: 20  # [INT] binsize in bases for summarizing data
+                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
+                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
+                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+            GC-pct:
+                binsize: 20  # [INT] binsize in bases for summarizing data
+                cutoff_low: 0.05  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
+                cutoff_high: 0.95  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
+                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+        condition: spt6-1004-37C  # [STRING] ID of condition group. Must be present in the 'group' tag fo samples in the assay metadata section.
+        control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
+        parameters:
+            type: absolute  # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See below for example parameters for a scaled plot.
+            refpoint: TSS  # [TSS|TES|center] reference point in region. TSS and TES correspond to the 5' and 3' ends, respectively.
+            refpointlabel: TSS  # [STRING] label for reference point
+            upstream: 500  # [INT] nucleotides upstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
+            downstream: 3000  # [INT] maximum nucleotides downstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
+            nan_afterend: True  # [True|False] Should data after the end of the annotation be left out? Useful for length-sorted heatmaps.
+            arrange: length  # [no|length|cluster] No: keep annotations in order of annotation file. Length: sort annotations in order of length before plotting. Cluster: try to plot annotations with similar data close to one another, using optimal leaf ordering of hierarchical clustering
+            cluster_using:  # if arrange: cluster, list the IDs fo the assays to be used for clustering
+                spt6+:
+                    - TSS-seq-sense
+                    - TSS-seq-antisense
+                    - TFIIB-ChIP-nexus-protection
+                spt6-1004-37C:
+                    - TSS-seq-sense
+                    - TSS-seq-antisense
+                    - TFIIB-ChIP-nexus-protection
+            cluster_five: -200  # [INT] 5' boundary of the data to be used for clustering, relative to the reference point.
+            cluster_three: 200  # [INT] 3' boundary of the data to be used for clustering, relative to the reference point
+            heatmap_colormap: viridis  # [viridis|inferno|magma|plasma] colormap for heatmaps
+    verified-genes-scaled:  # name of figure, for filenaming purposes
+        annotations:
+            verified-genes:  # name of annotation, for filenaming purposes. More than one annotation can be plotted
+                path: ../genome/annotations/Scer_transcripts_w_verifiedORFs.bed  # path to annotation
+                label: verified coding genes  # [STRING] label for annotation
+                n_clusters: 1  # [INT] number of clusters to separate data into.
+        include:
+            TSS-seq-sense:  # name of assay. Must be present in the assay metadata section above.
+                binsize: 20  # [INT] binsize in bases for summarizing data
+                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
+                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
+                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+            TSS-seq-antisense:
+                binsize: 20  # [INT] binsize in bases for summarizing data
+                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
+                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
+                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+            TFIIB-ChIP-nexus-protection:
+                binsize: 20  # [INT] binsize in bases for summarizing data
+                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
+                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
+                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+            GC-pct:
+                binsize: 20  # [INT] binsize in bases for summarizing data
+                cutoff_low: 0.05  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
+                cutoff_high: 0.95  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
+                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+        condition: spt6-1004-37C  # [STRING] ID of condition group. Must be present in the 'group' tag fo samples in the assay metadata section.
+        control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
+        parameters:
+            type: scaled  # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See above for example parameters for an absolute distance plot.
+            scaled_length: 2000  # [INT] length, in nt, to scale all annotations to
+            refpointlabel: TSS  # [STRING] label for 5' end of scaled annotations
+            endlabel: CPS  # [STRING] label for 3' end of scaled annotations
+            upstream: 500  # [INT] nucleotides upstream of 5' end of annotations to plot. Must be a multiple of all binsizes of the assays included in the plot.
+            downstream: 500  # [INT] nucleotides downstream of 3' end of annotations to plot. Must be a multiple of all binsizes of the assays included in the plot.
+            arrange: length  # [no|length|cluster] No: keep annotations in order of annotation file. Length: sort annotations in order of length before plotting. Cluster: try to plot annotations with similar data close to one another, using optimal leaf ordering of hierarchical clustering
+            cluster_using:  # if arrange: cluster, list the IDs fo the assays to be used for clustering
+                spt6+:
+                    - TSS-seq-sense
+                    - TSS-seq-antisense
+                    - TFIIB-ChIP-nexus-protection
+                spt6-1004-37C:
+                    - TSS-seq-sense
+                    - TSS-seq-antisense
+                    - TFIIB-ChIP-nexus-protection
+            cluster_five: -200  # [INT] 5' boundary of the data to be used for clustering, relative to the reference point.
+            cluster_three: 200  # [INT] 3' boundary of the data to be used for clustering, relative to the reference point
+            heatmap_colormap: viridis  # [viridis|inferno|magma|plasma] colormap for heatmaps
+
+# browser shot data generation parameters
+browser-shots:
+    TEF1:  # name of figure, for filenaming purposes
+        file: ../genome/annotations/Scer_transcripts_w_verifiedORFs.bed  # path to annotation file containing region of interest
+        id: TEF1  # [STRING] label for region of interest
+        refpoint: TSS  # [TSS|TES|center] reference point in region. TSS and TES correspond to the 5' and 3' ends, respectively.
+        upstream: 500  # [INT] nucleotides upstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
+        downstream: 3000  # [INT] maximum nucleotides downstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
+        condition: spt6-1004-37C  # [STRING] ID of condition group. Must be present in the 'group' tag fo samples in the assay metadata section.
+        control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
+        include:  # IDs of assays to include. Must be present in the assay metadata section
+            - TSS-seq-sense
+            - TSS-seq-antisense
+            - TFIIB-ChIP-nexus-sense
+            - TFIIB-ChIP-nexus-antisense
+
+# maximum number of threads to use if running locally
+threads: 4  # [INT]

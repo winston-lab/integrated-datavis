@@ -214,7 +214,7 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
                 complete(new_index, position, fill=list(mean=min(hmap_df[["mean"]], na.rm=TRUE)))
         }
 
-        cutoffs = hmap_df %>% pull(mean) %>% quantile(probs=c(cutoff_low[i], cutoff_high[i]), na.rm=TRUE)
+        cutoffs = hmap_df %>% pull(mean) %>% quantile(probs=c(cutoffs_low[i], cutoffs_high[i]), na.rm=TRUE)
 
         if (logtxn[i]) {
             heatmaps[[assays[i]]] =
