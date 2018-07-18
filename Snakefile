@@ -22,8 +22,8 @@ onsuccess:
 
 rule all:
     input:
-        expand("datavis/{figure}/{figure}-heatmaps.svg", figure=FIGURES),
-        expand("browser-shots/{gene}/{gene}_all-assays.tsv.gz", gene=BROWSER)
+        expand("datavis/{figure}/{figure}-heatmaps.svg", figure=FIGURES) if FIGURES else [],
+        expand("browser-shots/{gene}/{gene}_all-assays.tsv.gz", gene=BROWSER) if BROWSER else []
 
 rule make_stranded_annotations:
     input:
@@ -65,7 +65,7 @@ rule compute_matrix:
 
 rule cat_matrices:
     input:
-        lambda wc: expand("datavis/{figure}/{annotation}_{assay}_{sample}-melted.tsv.gz", annotation = [k for k,v in FIGURES[wc.figure]["annotations"].items()], sample = [k for k,v in ASSAYS[wc.assay]["coverage"].items() if v["group"]==FIGURES[wc.figure]["control"] or v["group"]==FIGURES[wc.figure]["condition"]], figure=wc.figure, assay=wc.assay)
+        lambda wc: expand("datavis/{figure}/{annotation}_{assay}_{sample}-melted.tsv.gz", annotation = [k for k,v in FIGURES[wc.figure]["annotations"].items()], sample = [k for k,v in ASSAYS[wc.assay]["coverage"].items() if v["group"] in [FIGURES[wc.figure]["control"], FIGURES[wc.figure]["condition"]]], figure=wc.figure, assay=wc.assay)
     output:
         "datavis/{figure}/{figure}_{assay}.tsv.gz"
     log: "logs/cat_matrices/cat_matrices-{figure}_{assay}.log"

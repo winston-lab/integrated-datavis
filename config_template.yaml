@@ -111,6 +111,7 @@ figures:
             refpointlabel: TSS  # [STRING] label for reference point
             upstream: 500  # [INT] nucleotides upstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
             downstream: 3000  # [INT] maximum nucleotides downstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
+            spread_type: quantile  # [conf_int|quantile] for metagenes, plot 95% confidence interval or quantiles
             nan_afterend: True  # [True|False] Should data after the end of the annotation be left out? Useful for length-sorted heatmaps.
             arrange: length  # [no|length|cluster] No: keep annotations in order of annotation file. Length: sort annotations in order of length before plotting. Cluster: try to plot annotations with similar data close to one another, using optimal leaf ordering of hierarchical clustering
             cluster_using:  # if arrange: cluster, list the IDs fo the assays to be used for clustering
@@ -161,6 +162,7 @@ figures:
             endlabel: CPS  # [STRING] label for 3' end of scaled annotations
             upstream: 500  # [INT] nucleotides upstream of 5' end of annotations to plot. Must be a multiple of all binsizes of the assays included in the plot.
             downstream: 500  # [INT] nucleotides downstream of 3' end of annotations to plot. Must be a multiple of all binsizes of the assays included in the plot.
+            spread_type: quantile  # [conf_int|quantile] for metagenes, plot 95% confidence interval or quantiles
             arrange: length  # [no|length|cluster] No: keep annotations in order of annotation file. Length: sort annotations in order of length before plotting. Cluster: try to plot annotations with similar data close to one another, using optimal leaf ordering of hierarchical clustering
             cluster_using:  # if arrange: cluster, list the IDs fo the assays to be used for clustering
                 spt6+:
