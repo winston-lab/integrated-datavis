@@ -22,6 +22,8 @@ onsuccess:
 
 rule all:
     input:
+        #require config file so that it gets archived
+        "config.yaml",
         expand("datavis/{figure}/{figure}-heatmaps.svg", figure=FIGURES) if FIGURES else [],
         expand("browser-shots/{gene}/{gene}_all-assays.tsv.gz", gene=BROWSER) if BROWSER else []
 
