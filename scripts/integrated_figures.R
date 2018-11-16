@@ -453,11 +453,11 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
     }
 
     meta_sample_byannotation = ggplot(data = metadf_sample,
-                                      aes(x=position, y=mid, ymin=low, ymax=high,
+                                      aes(x=position, y=pmax(0, mid), ymin=pmax(0, low), ymax=pmax(0, high),
                                           group=sample, color=group, fill=group))
 
     meta_group_byannotation = ggplot(data = metadf_group,
-                                     aes(x=position, y=mid, ymin=low, ymax=high,
+                                     aes(x=position, y=pmax(0, mid), ymin=pmax(0, low), ymax=pmax(0, high),
                                          group=group, color=group, fill=group))
     if (n_anno==1 && max(k)==1){
         meta_sample_byannotation = meta(meta_sample_byannotation + facet_wrap(~assay, ncol=4),
@@ -481,7 +481,7 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
                     units="cm", limitsize=FALSE)
 
     meta_group_bycondition = (ggplot(data = metadf_group %>% mutate(clabel = fct_inorder(paste0(annotation, ", ", cluster), ordered=TRUE)),
-                aes(x=position, y=mid, ymin=low, ymax=high,
+                aes(x=position, y=pmax(0, mid), ymin=pmax(0, low), ymax=pmax(0, high),
                     group=clabel, fill=clabel, color=clabel)) +
         facet_grid(group~assay, switch="y")) %>% meta(nest_right=FALSE) +
         scale_color_ptol(guide=guide_legend(ncol=1)) +
