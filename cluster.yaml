@@ -1,20 +1,17 @@
 __default__:
     queue : "short"
-    time : 60
+    time : 10
     n : 1
-    mem : 2000
+    mem : 200
     name : "{rule}.{wildcards}"
     log : "logs/cluster/{rule}.{wildcards}.log"
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 compute_matrix:
     time : 10
-    mem : 2000
+    mem : 400
 
 plot_figures:
-    time: 120
+    time: 60
     mem: 20000
 
-# plot_metagenes:
-#     time: 90
-#     mem: 20000
