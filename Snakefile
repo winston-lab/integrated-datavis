@@ -99,7 +99,7 @@ rule plot_figures:
         refptlabel = lambda wc: FIGURES[wc.figure]["parameters"]["refpointlabel"],
         upstream = lambda wc: FIGURES[wc.figure]["parameters"]["upstream"],
         dnstream = lambda wc: FIGURES[wc.figure]["parameters"]["downstream"],
-        scaled_length = lambda wc: 0 if FIGURES[wc.figure]["parameters"]["type"]=="absolute" else int(FIGURES[wc.figure]["parameters"]["scaled_length"])/1000,
+        scaled_length = lambda wc: 0 if FIGURES[wc.figure]["parameters"]["type"]=="absolute" else FIGURES[wc.figure]["parameters"]["scaled_length"],
         endlabel = lambda wc:  "HAIL SATAN" if FIGURES[wc.figure]["parameters"]["type"]=="absolute" else FIGURES[wc.figure]["parameters"]["endlabel"],
         cmap = lambda wc: FIGURES[wc.figure]["parameters"]["heatmap_colormap"],
         sortmethod = lambda wc: FIGURES[wc.figure]["parameters"]["arrange"],

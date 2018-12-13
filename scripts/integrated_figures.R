@@ -421,7 +421,7 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
             geom_vline(xintercept=0, size=1, color="grey65")
         if (ptype=="scaled"){
             ggp = ggp +
-                geom_vline(xintercept=scaled_length, size=1, color="grey65")
+                geom_vline(xintercept=scaled_length/1000, size=1, color="grey65")
         }
         ggp = ggp +
             geom_ribbon(alpha=0.4, size=0) +
