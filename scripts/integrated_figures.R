@@ -471,12 +471,12 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
 
     ggplot2::ggsave(meta_sample_byannotation_out,
                     plot=meta_sample_byannotation,
-                    width= if(n_anno==1 && max(k)==1){42} else {2+n_assays*10},
+                    width= if(n_anno==1 && max(k)==1){46} else {2+n_assays*10},
                     height= if(n_anno==1 && max(k)==1){2+8.5*ceiling(n_assays/4)} else {3+sum(k)*4.5},
                     units="cm", limitsize=FALSE)
     ggplot2::ggsave(meta_group_byannotation_out,
                     plot=meta_group_byannotation,
-                    width= if(n_anno==1 && max(k)==1){42} else {2+n_assays*10},
+                    width= if(n_anno==1 && max(k)==1){46} else {2+n_assays*10},
                     height= if(n_anno==1 && max(k)==1){2+8.5*ceiling(n_assays/4)} else {3+sum(k)*4.5},
                     units="cm", limitsize=FALSE)
 
