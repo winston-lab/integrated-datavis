@@ -195,7 +195,7 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
         # if standardization is specified, standardize data per feature,
         # where the mean and SD are weighted so condition and control
         # contribute equally
-        if (standardize) {
+        if (standardize || sortmethod=="cluster") {
             standardized = dflist[[assays[[i]]]] %>%
                 left_join(dflist[[assays[[i]]]] %>%
                               group_by(group, annotation, index) %>%
@@ -218,6 +218,9 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
                                   group_by(group, annotation, assay, index, position) %>%
                                   summarise(mean=mean(signal)) %>%
                                   ungroup())
+            }
+            if (standardize) {
+                dflist[[assays[[i]]]] = standardized
             }
         }
     }
