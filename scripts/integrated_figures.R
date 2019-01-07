@@ -8,7 +8,7 @@ library(ggthemes)
 library(gtable)
 
 import = function(data_path, condition_ids) {
-    read_tsv(inputs[[i]], col_names=c('group', 'sample', 'annotation',
+    read_tsv(data_path, col_names=c('group', 'sample', 'annotation',
                                       'assay', 'index', 'position', 'signal')) %>%
         filter(group %in% condition_ids) %>%
         group_by(annotation) %>%
@@ -133,7 +133,7 @@ meta = function(ggp,
                                        c(0, scaled_length/1000),
                                        0),
                    size = 1,
-                   color = "grey65")
+                   color = "grey65") +
         geom_ribbon(alpha=0.4, size=0) +
         geom_line() +
         scale_y_continuous(name="relative signal",
@@ -163,7 +163,7 @@ meta = function(ggp,
                                expand=c(0,0))
     }
     if (nest_right){
-        ggp = ggp %>% nest_right_facets(level=2, outer="annotation", inner="cluster")
+        ggp %<>% nest_right_facets(level=2, outer="annotation", inner="cluster")
     }
     return(ggp)
 }
@@ -179,7 +179,9 @@ format_xaxis = function(refptlabel, upstream, dnstream){
     }
 }
 
-main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, spread_type, trim_pcts, logtxn, pcount, assays, ptype, refptlabel,
+main = function(inputs, anno_paths, conditions,
+                cutoffs_low, cutoffs_high, spread_type, trim_pcts, standardize,
+                logtxn, pcount, assays, ptype, refptlabel,
                 upstream, dnstream, scaled_length, sortmethod, cluster_assays, cluster_five, cluster_three, k,
                 cmap, endlabel, anno_out, cluster_out, heatmap_out, meta_sample_byannotation_out,
                 meta_group_byannotation_out, meta_group_bycondition_out) {
@@ -493,22 +495,21 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
         metadf_sample %<>%
             bind_rows(temp_metadf_sample)
 
+        temp_metadf_group = dflist[[i]] %>%
+            group_by(group, annotation, assay, position, cluster)
         if (spread_type=="conf_int"){
             temp_metadf_group %<>%
-                group_by(group, annotation, assay, position, cluster) %>%
-                summarise(sd = sd(mid),
+                summarise(sd = sd(mid, na.rm=TRUE),
                           n = n_distinct(sample),
-                          mid = mean(mid)) %>%
+                          mid = mean(mid, na.rm=TRUE)) %>%
                 mutate(sem = sqrt((n-1)/2)*gamma((n-1)/2)/gamma(n/2)*sd/sqrt(n),
                        high = mid + 1.96*sem,
                        low = mid - 1.96*sem)
         } else if (spread_type=="quantile") {
-            temp_metadf_group = dflist[[i]] %>%
-                # mutate(signal = scales::rescale(signal)) %>%
-                group_by(group, annotation, assay, position, cluster) %>%
-                summarise(mid = median(signal),
-                          low = quantile(signal, trim_pcts[i]),
-                          high = quantile(signal, 1-trim_pcts[i]))
+            temp_metadf_group %<>%
+                summarise(mid = median(signal, na.rm=TRUE),
+                          low = quantile(signal, trim_pcts[i], na.rm=TRUE),
+                          high = quantile(signal, 1-trim_pcts[i], na.rm=TRUE))
         }
 
         temp_metadf_group %<>%
@@ -537,12 +538,12 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
                                      aes(x=position, y=pmax(0, mid), ymin=pmax(0, low), ymax=pmax(0, high),
                                          group=group, color=group, fill=group))
     if (n_anno==1 && max(k)==1){
-        meta_sample_byannotation = meta(ggp = meta_sample_byannotation + facet_wrap(~assay, ncol=4),
+        meta_sample_byannotation = meta(ggp = (meta_sample_byannotation + facet_wrap(~assay, ncol=4)),
                                         plot_type = ptype, scaled_length = scaled_length,
                                         refptlabel = refptlabel, endlabel = endlabel,
                                         upstream=upstream, dnstream = dnstream,
                                         nest_right=FALSE)
-        meta_group_byannotation = meta(ggp = meta_group_byannotation + facet_wrap(~assay, ncol=4),
+        meta_group_byannotation = meta(ggp = (meta_group_byannotation + facet_wrap(~assay, ncol=4)),
                                        plot_type = ptype, scaled_length = scaled_length,
                                        refptlabel = refptlabel, endlabel = endlabel,
                                        upstream=upstream, dnstream = dnstream,

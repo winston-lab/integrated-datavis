@@ -12,6 +12,7 @@ dag.svg
 Rplots.pdf
 mogrify.log
 mogrify.err
+*.*.swp
 
 config.yaml
 
