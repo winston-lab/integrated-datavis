@@ -81,9 +81,13 @@ rule plot_figures:
         annotations = lambda wc: [v["path"] for k,v in FIGURES[wc.figure]["annotations"].items()]
     output:
         heatmap = "datavis/{figure}/{figure}-heatmaps.svg",
+        heatmap_standardized = "datavis/{figure}/{figure}-heatmaps-standardized.svg",
         sample_facet_anno = "datavis/{figure}/{figure}-metagene-sample-facet-anno.svg",
+        sample_facet_anno_standardized = "datavis/{figure}/{figure}-metagene-sample-facet-anno-standardized.svg",
         group_facet_anno = "datavis/{figure}/{figure}-metagene-group-facet-anno.svg",
+        group_facet_anno_standardized = "datavis/{figure}/{figure}-metagene-group-facet-anno-standardized.svg",
         group_facet_group = "datavis/{figure}/{figure}-metagene-group-facet-group.svg",
+        group_facet_group_standardized = "datavis/{figure}/{figure}-metagene-group-facet-group-standardized.svg",
     params:
         annotations_out = lambda wc: [f"datavis/{wc.figure}/{annotation}_cluster-" + str(cluster) + ".bed" for annotation in FIGURES[wc.figure]["annotations"] for cluster in range(1, FIGURES[wc.figure]["annotations"][annotation]["n_clusters"]+1)],
         clusters_out = lambda wc: [f"datavis/{wc.figure}/" + annotation + ".pdf" for annotation in FIGURES[wc.figure]["annotations"]],
@@ -91,7 +95,6 @@ rule plot_figures:
         cutoffs_low = lambda wc: [v["cutoff_low"] for k,v in FIGURES[wc.figure]["include"].items()],
         cutoffs_high = lambda wc: [v["cutoff_high"] for k,v in FIGURES[wc.figure]["include"].items()],
         trim_pct = lambda wc: [v["trim_pct"] for k,v in FIGURES[wc.figure]["include"].items()],
-        standardize = lambda wc: FIGURES[wc.figure]["parameters"]["standardize"],
         logtxn = lambda wc: [ASSAYS[a]["log_transform"] for a in FIGURES[wc.figure]["include"]],
         pcount = lambda wc: [0 if not ASSAYS[a]["log_transform"] else ASSAYS[a]["pseudocount"] for a in FIGURES[wc.figure]["include"]],
         assays = lambda wc: [ASSAYS[a]["label"] for a in FIGURES[wc.figure]["include"]],

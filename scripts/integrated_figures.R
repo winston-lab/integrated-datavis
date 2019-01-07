@@ -168,6 +168,7 @@ meta = function(ggp,
     return(ggp)
 }
 
+
 format_xaxis = function(refptlabel, upstream, dnstream){
     function(x){
         if (first(upstream)>500 | first(dnstream)>500){
@@ -178,9 +179,7 @@ format_xaxis = function(refptlabel, upstream, dnstream){
     }
 }
 
-main = function(inputs, anno_paths, conditions,
-                cutoffs_low, cutoffs_high, spread_type, trim_pcts,
-                standardize, logtxn, pcount, assays, ptype, refptlabel,
+main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, spread_type, trim_pcts, logtxn, pcount, assays, ptype, refptlabel,
                 upstream, dnstream, scaled_length, sortmethod, cluster_assays, cluster_five, cluster_three, k,
                 cmap, endlabel, anno_out, cluster_out, heatmap_out, meta_sample_byannotation_out,
                 meta_group_byannotation_out, meta_group_bycondition_out) {
@@ -196,7 +195,7 @@ main = function(inputs, anno_paths, conditions,
         # if standardization is specified, standardize data per feature,
         # where the mean and SD are weighted so condition and control
         # contribute equally
-        if (standardize || sortmethod=="cluster") {
+        if (standardize) {
             standardized = dflist[[assays[[i]]]] %>%
                 left_join(dflist[[assays[[i]]]] %>%
                               group_by(group, annotation, index) %>%
@@ -464,7 +463,6 @@ main = function(inputs, anno_paths, conditions,
 
     metadf_sample = tibble()
     metadf_group = tibble()
-
     for (i in 1:n_assays){
         temp_metadf_sample = dflist[[i]] %>%
             # mutate(signal = scales::rescale(signal)) %>%
@@ -598,7 +596,7 @@ main(inputs = snakemake@input[["matrices"]],
      cutoffs_high = snakemake@params[["cutoffs_high"]],
      spread_type = snakemake@params[["spread_type"]],
      trim_pcts = snakemake@params[["trim_pct"]],
-     standardize = as.logical(snakemake@params[["standardize"]]),
+     standardize = FALSE,
      logtxn = snakemake@params[["logtxn"]],
      pcount = snakemake@params[["pcount"]],
      assays = snakemake@params[["assays"]],
@@ -620,4 +618,34 @@ main(inputs = snakemake@input[["matrices"]],
      meta_sample_byannotation_out = snakemake@output[["sample_facet_anno"]],
      meta_group_byannotation_out = snakemake@output[["group_facet_anno"]],
      meta_group_bycondition_out = snakemake@output[["group_facet_group"]])
+
+main(inputs = snakemake@input[["matrices"]],
+     anno_paths = snakemake@input[["annotations"]],
+     conditions = snakemake@params[["conditions"]],
+     cutoffs_low = snakemake@params[["cutoffs_low"]],
+     cutoffs_high = snakemake@params[["cutoffs_high"]],
+     spread_type = snakemake@params[["spread_type"]],
+     trim_pcts = snakemake@params[["trim_pct"]],
+     standardize = TRUE,
+     logtxn = snakemake@params[["logtxn"]],
+     pcount = snakemake@params[["pcount"]],
+     assays = snakemake@params[["assays"]],
+     ptype = snakemake@params[["plot_type"]],
+     refptlabel = snakemake@params[["refptlabel"]],
+     upstream = snakemake@params[["upstream"]],
+     dnstream= snakemake@params[["dnstream"]],
+     scaled_length= snakemake@params[["scaled_length"]],
+     endlabel = snakemake@params[["endlabel"]],
+     sortmethod = snakemake@params[["sortmethod"]],
+     cluster_assays = snakemake@params[["cluster_using"]],
+     cluster_five = snakemake@params[["cluster_five"]],
+     cluster_three = snakemake@params[["cluster_three"]],
+     k = snakemake@params[["k"]],
+     cmap= snakemake@params[["cmap"]],
+     anno_out = snakemake@params[["annotations_out"]],
+     cluster_out = snakemake@params[["cluster_out"]],
+     heatmap_out = snakemake@output[["heatmap_standardized"]],
+     meta_sample_byannotation_out = snakemake@output[["sample_facet_anno_standardized"]],
+     meta_group_byannotation_out = snakemake@output[["group_facet_anno_standardized"]],
+     meta_group_bycondition_out = snakemake@output[["group_facet_group_standardized"]])
 

@@ -107,7 +107,6 @@ figures:
         control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
         parameters:
             type: absolute  # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See below for example parameters for a scaled plot.
-            standardize: False # [True|False] If True, data for each feature will be standardized. Useful for normalizing out differences in expression to look at relative enrichment over a region.
             refpoint: TSS  # [TSS|TES|center] reference point in region. TSS and TES correspond to the 5' and 3' ends, respectively.
             refpointlabel: TSS  # [STRING] label for reference point
             upstream: 500  # [INT] nucleotides upstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
@@ -158,7 +157,6 @@ figures:
         control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
         parameters:
             type: scaled  # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See above for example parameters for an absolute distance plot.
-            standardize: False # [True|False] If True, data for each feature will be standardized. Useful for normalizing out differences in expression to look at relative enrichment over a region.
             scaled_length: 2000  # [INT] length, in nt, to scale all annotations to
             refpointlabel: TSS  # [STRING] label for 5' end of scaled annotations
             endlabel: CPS  # [STRING] label for 3' end of scaled annotations
