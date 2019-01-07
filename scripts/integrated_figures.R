@@ -1,6 +1,5 @@
 library(cowplot)
 library(tidyverse)
-library(forcats)
 library(magrittr)
 library(viridis)
 library(seriation)
@@ -8,14 +7,88 @@ library(psych)
 library(ggthemes)
 library(gtable)
 
-format_xaxis = function(refptlabel, upstream, dnstream){
-    function(x){
-        if (first(upstream)>500 | first(dnstream)>500){
-            return(if_else(x==0, refptlabel, as.character(x)))
-        } else {
-            return(if_else(x==0, refptlabel, as.character(x*1000)))
+import = function(data_path, condition_ids) {
+    read_tsv(inputs[[i]], col_names=c('group', 'sample', 'annotation',
+                                      'assay', 'index', 'position', 'signal')) %>%
+        filter(group %in% condition_ids) %>%
+        group_by(annotation) %>%
+        mutate(annotation_labeled=paste(n_distinct(index), annotation)) %>%
+        ungroup() %>%
+        mutate(annotation=annotation_labeled) %>%
+        select(-annotation_labeled) %>%
+        mutate_at(vars('sample', 'annotation'), funs(fct_inorder(., ordered=TRUE))) %>%
+        mutate(group = ordered(group, levels = condition_ids)) %>%
+        drop_na() %>%
+        return()
+}
+
+nest_right_facets = function(ggp, level=2, outer="replicate", inner="annotation"){
+    og_grob = ggplotGrob(ggp)
+    strip_loc = grep("strip-r", og_grob[["layout"]][["name"]])
+    strip = gtable_filter(og_grob, "strip-r", trim=FALSE)
+    strip_heights = gtable_filter(og_grob, "strip-r")[["heights"]]
+
+    strip_top = min(strip[["layout"]][["t"]])
+    strip_bot = max(strip[["layout"]][["b"]])
+    strip_x = strip[["layout"]][["r"]][1]
+
+    mat = matrix(vector("list", length=(length(strip)*2-1)*level), ncol=level)
+    mat[] = list(zeroGrob())
+
+    facet_grob = gtable_matrix("rightcol", grobs=mat,
+                               widths=unit(rep(1,level), "null"),
+                               heights=strip_heights)
+
+    if(level==3){
+        rep_grob_indices = seq(1, length(strip_loc), sum(k))
+        for (rep_idx in 1:max_reps){
+            #add replicate facet label
+            facet_grob %<>%
+                gtable_add_grob(grobs = og_grob$grobs[[strip_loc[rep_grob_indices[rep_idx]]]]$grobs[[level]],
+                                t = ((sum(k)*2))*(rep_idx-1)+1,
+                                b = ((sum(k)*2))*(rep_idx)-1,
+                                l = level, r = level)
+            #for each annotation within each replicate
+            for (anno_idx in 1:n_anno){
+                t = ((sum(k)*2))*(rep_idx-1)+1+sum(k[1:anno_idx])-k[1]+2*(anno_idx-1)
+                b = t + k[anno_idx]
+                facet_grob %<>%
+                    gtable_add_grob(grobs = og_grob$grobs[[strip_loc[rep_grob_indices[rep_idx]]+
+                                                               sum(k[1:anno_idx])-k[1]]]$grobs[[2]],
+                                    t = t, b = b, l = 2, r = 2)
+            }
+        }
+    } else if(level==2){
+        if (outer=="annotation"){
+            outer_grob_indices = 1+lag(k, default=0)
+            n_outer = n_anno
+        } else if (outer=="replicate"){
+            outer_grob_indices = seq(1, length(strip_loc), sum(k))
+            n_outer = max_reps
+        }
+        for (idx in 1:n_outer){
+            if (outer=="annotation"){
+                t=((k[idx]*2))*(idx-1)+1
+                b=((k[idx]*2))*(idx)-1
+            } else if (outer=="replicate"){
+                if (inner=="cluster"){
+                    t=((k*2))*(idx-1)+1
+                    b=((k*2))*(idx)-1
+                } else{
+                    t = (n_anno*2)*(idx-1)+1
+                    b = (n_anno*2)*(idx)-1
+                }
+            }
+            facet_grob %<>%
+                gtable_add_grob(grobs = og_grob$grobs[[strip_loc[outer_grob_indices[idx]]]]$grobs[[2]],
+                                t=t, b=b, l=2, r=2)
         }
     }
+    new_grob = gtable_add_grob(og_grob,
+                               facet_grob,
+                               t=strip_top, r=strip_x, l=strip_x, b=strip_bot,
+                               name='rstrip')
+    return(new_grob)
 }
 
 theme_heatmap = theme_minimal() +
@@ -50,7 +123,64 @@ theme_metagene = theme_light() +
           legend.text = element_text(size=12),
           panel.spacing.x = unit(0.5, "cm"))
 
-main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, spread_type, trim_pcts, logtxn, pcount, assays, ptype, refptlabel,
+meta = function(ggp,
+                plot_type, scaled_length,
+                refptlabel, endlabel,
+                upstream, dnstream,
+                nest_right=TRUE){
+    ggp = ggp +
+        geom_vline(xintercept = ifelse(plot_type=="scaled",
+                                       c(0, scaled_length/1000),
+                                       0),
+                   size = 1,
+                   color = "grey65")
+        geom_ribbon(alpha=0.4, size=0) +
+        geom_line() +
+        scale_y_continuous(name="relative signal",
+                           breaks = scales::pretty_breaks(n=3)) +
+        scale_color_ptol(guide=guide_legend(keywidth = unit(2, "cm"),
+                                            label.position="top",
+                                            label.hjust=0.5)) +
+        scale_fill_ptol() +
+        theme_metagene
+    if (plot_type=="absolute"){
+        ggp = ggp +
+            scale_x_continuous(breaks=scales::pretty_breaks(n=3),
+                               labels= function(x){if_else(x==0,
+                                                           refptlabel,
+                                                           if(upstream>500 | dnstream>500){as.character(x)}
+                                                           else {as.character(x*1000)})},
+                               name=paste("distance from", refptlabel,
+                                          if(upstream>500 | dnstream>500){"(kb)"} else {"(nt)"}),
+                               limits = c(-upstream/1000, dnstream/1000),
+                               expand=c(0,0))
+    } else {
+        ggp = ggp +
+            scale_x_continuous(breaks=c(0, (scaled_length/2)/1000, scaled_length/1000),
+                               labels=c(refptlabel, "", endlabel),
+                               name="scaled distance",
+                               limits = c(-upstream/1000, (scaled_length+dnstream)/1000),
+                               expand=c(0,0))
+    }
+    if (nest_right){
+        ggp = ggp %>% nest_right_facets(level=2, outer="annotation", inner="cluster")
+    }
+    return(ggp)
+}
+
+format_xaxis = function(refptlabel, upstream, dnstream){
+    function(x){
+        if (first(upstream)>500 | first(dnstream)>500){
+            return(if_else(x==0, refptlabel, as.character(x)))
+        } else {
+            return(if_else(x==0, refptlabel, as.character(x*1000)))
+        }
+    }
+}
+
+main = function(inputs, anno_paths, conditions,
+                cutoffs_low, cutoffs_high, spread_type, trim_pcts,
+                standardize, logtxn, pcount, assays, ptype, refptlabel,
                 upstream, dnstream, scaled_length, sortmethod, cluster_assays, cluster_five, cluster_three, k,
                 cmap, endlabel, anno_out, cluster_out, heatmap_out, meta_sample_byannotation_out,
                 meta_group_byannotation_out, meta_group_bycondition_out) {
@@ -61,41 +191,53 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
 
     #import data
     for (i in 1:n_assays){
-        dflist[[assays[[i]]]] =
-            read_tsv(inputs[[i]], col_names=c('group', 'sample', 'annotation',
-                                              'assay', 'index', 'position', 'signal')) %>%
-            group_by(annotation) %>%
-            mutate(annotation_labeled=paste(n_distinct(index), annotation)) %>%
-            ungroup() %>%
-            mutate(annotation=annotation_labeled) %>%
-            select(-annotation_labeled) %>%
-            mutate_at(vars('group', 'sample', 'annotation'), funs(fct_inorder(., ordered=TRUE)))
+        dflist[[assays[[i]]]] = import(inputs[[i]], conditions)
 
-        #cluster on data averaged over group only
-        #scale data 0 to 1 for each annotation to cluster more on position and less on signal levels,
-        if (sortmethod=="cluster"){
-            cluster_df = dflist[[i]] %>%
-                filter(paste0(group, "-", assay) %in% cluster_assays &
-                           between(position, cluster_five/1000, cluster_three/1000)) %>%
-                group_by(group, annotation, assay, index, position) %>%
-                summarise(mean=mean(signal)) %>%
-                group_by(group, annotation, assay, index) %>%
-                mutate(mean=scales::rescale(mean)) %>%
-                ungroup() %>%
-                bind_rows(cluster_df, .)
+        # if standardization is specified, standardize data per feature,
+        # where the mean and SD are weighted so condition and control
+        # contribute equally
+        if (standardize || sortmethod=="cluster") {
+            standardized = dflist[[assays[[i]]]] %>%
+                left_join(dflist[[assays[[i]]]] %>%
+                              group_by(group, annotation, index) %>%
+                              summarise(mean = mean(signal)/(2*n_distinct(sample)),
+                                        sdev = sd(signal)/(2*n_distinct(sample))) %>%
+                              group_by(annotation, index) %>%
+                              summarise(mean = sum(mean),
+                                        sdev = sum(sdev)),
+                          by=c("annotation", "index")) %>%
+                mutate(signal = (signal-mean)/sdev) %>%
+                select(-c(mean, sdev))
+
+            # if clustering, cluster on standardized data averaged over group
+            if (sortmethod=="cluster"){
+                cluster_df %<>%
+                    bind_rows(standardized %>%
+                                  filter(paste0(group, "-", assay) %in% cluster_assays &
+                                             position %>% between(cluster_five/1000,
+                                                                  cluster_three/1000)) %>%
+                                  group_by(group, annotation, assay, index, position) %>%
+                                  summarise(mean=mean(signal)) %>%
+                                  ungroup())
+            }
         }
     }
 
     #import annotation information
     n_anno = n_distinct(dflist[[1]][["annotation"]], na.rm=TRUE)
-    annotations = dflist[[1]] %>% distinct(annotation) %>% filter(!is.na(annotation)) %>%  pull(annotation)
+    annotations = dflist[[1]] %>%
+        distinct(annotation) %>%
+        filter(!is.na(annotation)) %>%
+        pull(annotation)
     bed = tibble()
     for (i in 1:n_anno){
-        bed = read_tsv(anno_paths[i], col_names=c('chrom', 'start', 'end', 'name', 'score', 'strand')) %>%
-            mutate(annotation=annotations[i],
-                   score = as.character(score)) %>%
-            rowid_to_column(var="index") %>%
-            bind_rows(bed, .)
+        bed %<>%
+            bind_rows(read_tsv(anno_paths[i],
+                               col_names=c("chrom", "start", "end",
+                                           "name", "score", "strand")) %>%
+                          mutate(annotation=annotations[i],
+                                 score = as.character(score)) %>%
+                          rowid_to_column(var="index"))
     }
 
     #sort (by clustering, annotation length, or keep original order)
@@ -103,7 +245,8 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
         reorder = tibble()
 
         for (i in 1:n_anno){
-            rr = cluster_df %>% filter(annotation==annotations[i]) %>%
+            rr = cluster_df %>%
+                filter(annotation==annotations[i]) %>%
                 select(-annotation) %>%
                 unite(cid, c("group", "assay", "position"), sep="~") %>%
                 spread(cid, mean, fill=0) %>%
@@ -138,12 +281,14 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
                 dev.off()
             }
 
-            reorder = reorder %>% bind_rows(sub_reorder)
+            reorder %<>% bind_rows(sub_reorder)
 
-            sorted = sub_reorder %>% left_join(bed, by=c("annotation", "og_index"="index")) %>%
+            sorted = sub_reorder %>%
+                left_join(bed, by=c("annotation", "og_index"="index")) %>%
                 select(-c(annotation, og_index, new_index))
             for (j in 1:k[i]){
-                sorted %>% filter(cluster==j) %>%
+                sorted %>%
+                    filter(cluster==j) %>%
                     select(-cluster) %>%
                     write_tsv(anno_out[sum(k[0:(i-1)])+j], col_names=FALSE)
             }
@@ -152,7 +297,9 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
             dflist[[m]] = reorder %>%
                 group_by(annotation, cluster) %>%
                 mutate(cluster_labeled = paste0("cluster ", cluster, " (n=", n_distinct(new_index), ")")) %>%
-                ungroup() %>% mutate(cluster = cluster_labeled) %>% select(-cluster_labeled) %>%
+                ungroup() %>%
+                mutate(cluster = cluster_labeled) %>%
+                select(-cluster_labeled) %>%
                 left_join(dflist[[m]], ., by=c("annotation", "index"="og_index")) %>%
                 group_by(annotation, cluster) %>%
                 mutate(new_index = as.integer(new_index+1-min(new_index))) %>%
@@ -160,14 +307,16 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
                 arrange(annotation, cluster, new_index)
         }
     } else if (sortmethod=="length"){
-        sorted = bed %>% group_by(annotation) %>%
+        sorted = bed %>%
+            group_by(annotation) %>%
             arrange(end-start, .by_group=TRUE) %>%
             rowid_to_column(var="new_index") %>%
             mutate(new_index = as.integer(new_index+1-min(new_index))) %>%
             ungroup()
 
         for (i in 1:n_anno){
-            sorted %>% filter(annotation==annotations[i]) %>%
+            sorted %>%
+                filter(annotation==annotations[i]) %>%
                 select(-c(new_index, index, annotation)) %>%
                 write_tsv(path=anno_out[i], col_names=FALSE)
         }
@@ -180,13 +329,14 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
         }
     } else {
         for (i in 1:n_anno){
-            bed %>% filter(annotation==annotations[i]) %>%
+            bed %>%
+                filter(annotation==annotations[i]) %>%
                 select(-c(index, annotation)) %>%
                 write_tsv(path=anno_out[i], col_names=FALSE)
         }
 
         for (m in 1:n_assays){
-            dflist[[m]] = dflist[[m]] %>%
+            dflist[[m]] %<>%
                 mutate(new_index = index, cluster=as.integer(1))
         }
     }
@@ -198,47 +348,67 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
 
         #account for datasets missing conditions
         if (! all(conditions %in% hmap_df[["group"]])) {
-            hmap_df = hmap_df %>% complete(group=conditions,
-                                           fill=list(annotation=hmap_df %>% slice(1) %>% pull(annotation),
-                                                     cluster=hmap_df %>% slice(1) %>% pull(cluster))) %>%
+            hmap_df %<>%
+                complete(group=conditions,
+                         fill=list(annotation=hmap_df %>% slice(1) %>% pull(annotation),
+                                   cluster=hmap_df %>% slice(1) %>% pull(cluster))) %>%
                 mutate(group = ordered(group, levels=conditions))
         }
 
-        hmap_df = hmap_df %>%
+        hmap_df %<>%
             group_by(group, annotation, assay, position, cluster, new_index) %>%
             summarise(mean = mean(signal))
 
         #if sortmethod isn't length, fill in missing data with minimum signal
         if (sortmethod != "length"){
-            hmap_df = hmap_df %>% group_by(group, annotation, assay, cluster) %>%
-                complete(new_index, position, fill=list(mean=min(hmap_df[["mean"]], na.rm=TRUE)))
+            hmap_df %<>%
+                group_by(group, annotation, assay, cluster) %>%
+                complete(new_index,
+                         position,
+                         fill=list(mean=min(hmap_df[["mean"]], na.rm=TRUE)))
         }
 
-        cutoffs = hmap_df %>% pull(mean) %>% quantile(probs=c(cutoffs_low[i], cutoffs_high[i]), na.rm=TRUE)
+        cutoffs = hmap_df %>%
+            pull(mean) %>%
+            quantile(probs=c(cutoffs_low[i], cutoffs_high[i]), na.rm=TRUE)
 
         if (logtxn[i]) {
             heatmaps[[assays[i]]] =
-                ggplot(data = hmap_df, aes(x=position, y=new_index, fill=log2(mean+pcount[i])))
+                ggplot(data = hmap_df,
+                       aes(x=position, y=new_index, fill=log2(mean+pcount[i])))
         } else {
             heatmaps[[assays[i]]] =
-                ggplot(data = hmap_df, aes(x=position, y=new_index, fill=mean))
+                ggplot(data = hmap_df,
+                       aes(x=position, y=new_index, fill=mean))
         }
+
         heatmaps[[i]] = heatmaps[[i]] +
             geom_raster() +
-            scale_fill_viridis(option=cmap, na.value = "#FFFFFF00",
-                               limits = cutoffs, oob=scales::squish,
-                               guide=guide_colorbar(title.position="top", barwidth=12,
-                                                    barheight=1, title.hjust=0.5),
+            scale_fill_viridis(option = cmap, na.value = "#FFFFFF00",
+                               limits = cutoffs,
+                               oob = scales::squish,
+                               guide = guide_colorbar(title.position="top",
+                                                      barwidth=12,
+                                                      barheight=1,
+                                                      title.hjust=0.5),
                                name=if (logtxn[[i]]){ bquote(bold(log[2] ~ .(assays[[i]]) ~ "signal"))}
                                     else {bquote(bold(.(assays[[i]]) ~ "signal"))}) +
             scale_y_reverse(expand=c(0.02, 0)) +
             theme_heatmap
         if(max(k)>1){
             heatmaps[[i]] = heatmaps[[i]] +
-                facet_grid(annotation+cluster~group, scale="free_y", space="free_y", switch="y", drop=FALSE)
+                facet_grid(annotation+cluster~group,
+                           scale="free_y",
+                           space="free_y",
+                           switch="y",
+                           drop=FALSE)
         } else {
             heatmaps[[i]] = heatmaps[[i]] +
-                facet_grid(annotation~group, scale="free_y", space="free_y", switch="y", drop=FALSE)
+                facet_grid(annotation~group,
+                           scale="free_y",
+                           space="free_y",
+                           switch="y",
+                           drop=FALSE)
         }
 
         if (ptype=="absolute"){
@@ -261,12 +431,13 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
 
     #EXTREMELY JANKY WAY TO GET FACET LABELS...build an invisible plot...
     #TODO: facet by clusters also and nicer labeling for clusters
-    facet_label = ggplot(data = hmap_df, aes(x=0, y=new_index, fill=mean)) +
+    facet_label = ggplot(data = hmap_df,
+                         aes(x=0, y=new_index, fill=mean)) +
         geom_raster() +
         scale_fill_gradient(low="#FFFFFF00", high="#FFFFFF00",
                             guide=guide_colorbar(title.position="top", barwidth=0.1,
-                                                barheight=1, title.hjust=0.5),
-                           name=bquote(bold("."))) +
+                                                 barheight=1, title.hjust=0.5),
+                            name=bquote(bold("."))) +
         scale_y_reverse(expand=c(0.02, 0)) +
         facet_grid(annotation~group, scale="free_y", space="free_y") +
         theme_heatmap +
@@ -277,14 +448,19 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
               strip.text.y = element_text(size=12, color="black", face="bold", angle=0, hjust=1))
 
     for (i in 0:((n_assays-1) %/% 4)){
-        heatmaps = append(heatmaps, list(facet_label), after=4*i+i)
+        heatmaps = append(heatmaps,
+                          list(facet_label),
+                          after=4*i+i)
     }
 
-    all_heatmaps = plot_grid(plotlist = heatmaps, align="h", ncol=min(n_assays+1, 5), axis="trbl")
+    all_heatmaps = plot_grid(plotlist = heatmaps,
+                             align="h",
+                             ncol=min(n_assays+1, 5),
+                             axis="trbl")
 
     ggplot2::ggsave(heatmap_out, plot = all_heatmaps,
-           width=2+2/15*max(nchar(as.character(annotations)))+min(n_assays,4)*16,
-           height=ceiling(n_assays/4)*25, units="cm", limitsize=FALSE)
+                    width=2+2/15*max(nchar(as.character(annotations)))+min(n_assays,4)*16,
+                    height=ceiling(n_assays/4)*25, units="cm", limitsize=FALSE)
 
     metadf_sample = tibble()
     metadf_group = tibble()
@@ -313,10 +489,11 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
             mutate_at(vars(low, mid, high), funs((.-y_min)/y_range)) %>%
             select(-c(y_min, y_range))
 
-        metadf_sample %<>% bind_rows(temp_metadf_sample)
+        metadf_sample %<>%
+            bind_rows(temp_metadf_sample)
 
         if (spread_type=="conf_int"){
-            temp_metadf_group = temp_metadf_sample %>%
+            temp_metadf_group %<>%
                 group_by(group, annotation, assay, position, cluster) %>%
                 summarise(sd = sd(mid),
                           n = n_distinct(sample),
@@ -340,117 +517,16 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
             mutate_at(vars(low, mid, high), funs((.-y_min)/y_range)) %>%
             select(-c(y_min, y_range))
 
-        metadf_group %<>% bind_rows(temp_metadf_group)
+        metadf_group %<>%
+            bind_rows(temp_metadf_group)
     }
 
     if (sortmethod != "cluster"){
-        metadf_sample = metadf_sample %>% mutate(cluster = paste("cluster", cluster))
-        metadf_group = metadf_group %>% mutate(cluster = paste("cluster", cluster))
+        metadf_sample %<>% mutate(cluster = paste("cluster", cluster))
+        metadf_group %<>% mutate(cluster = paste("cluster", cluster))
     }
-    metadf_sample = metadf_sample %>% mutate_at(vars(group, sample, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
-    metadf_group = metadf_group %>% mutate_at(vars(group, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
-
-    nest_right_facets = function(ggp, level=2, outer="replicate", inner="annotation"){
-        og_grob = ggplotGrob(ggp)
-        strip_loc = grep("strip-r", og_grob[["layout"]][["name"]])
-        strip = gtable_filter(og_grob, "strip-r", trim=FALSE)
-        strip_heights = gtable_filter(og_grob, "strip-r")[["heights"]]
-
-        strip_top = min(strip[["layout"]][["t"]])
-        strip_bot = max(strip[["layout"]][["b"]])
-        strip_x = strip[["layout"]][["r"]][1]
-
-        mat = matrix(vector("list", length=(length(strip)*2-1)*level), ncol=level)
-        mat[] = list(zeroGrob())
-
-        facet_grob = gtable_matrix("rightcol", grobs=mat,
-                                   widths=unit(rep(1,level), "null"),
-                                   heights=strip_heights)
-
-        if(level==3){
-            rep_grob_indices = seq(1, length(strip_loc), sum(k))
-            for (rep_idx in 1:max_reps){
-                #add replicate facet label
-                facet_grob = facet_grob %>%
-                        gtable_add_grob(grobs = og_grob$grobs[[strip_loc[rep_grob_indices[rep_idx]]]]$grobs[[level]],
-                                        t = ((sum(k)*2))*(rep_idx-1)+1,
-                                        b = ((sum(k)*2))*(rep_idx)-1,
-                                        l = level, r = level)
-                #for each annotation within each replicate
-                for (anno_idx in 1:n_anno){
-                    t = ((sum(k)*2))*(rep_idx-1)+1+sum(k[1:anno_idx])-k[1]+2*(anno_idx-1)
-                    b = t + k[anno_idx]
-                    facet_grob = facet_grob %>%
-                            gtable_add_grob(grobs = og_grob$grobs[[strip_loc[rep_grob_indices[rep_idx]]+
-                                                                       sum(k[1:anno_idx])-k[1]]]$grobs[[2]],
-                                            t = t, b = b, l = 2, r = 2)
-                }
-            }
-        } else if(level==2){
-            if (outer=="annotation"){
-                outer_grob_indices = 1+lag(k, default=0)
-                n_outer = n_anno
-            } else if (outer=="replicate"){
-                outer_grob_indices = seq(1, length(strip_loc), sum(k))
-                n_outer = max_reps
-            }
-            for (idx in 1:n_outer){
-                if (outer=="annotation"){
-                    t=((k[idx]*2))*(idx-1)+1
-                    b=((k[idx]*2))*(idx)-1
-                } else if (outer=="replicate"){
-                    if (inner=="cluster"){
-                        t=((k*2))*(idx-1)+1
-                        b=((k*2))*(idx)-1
-                    } else{
-                        t = (n_anno*2)*(idx-1)+1
-                        b = (n_anno*2)*(idx)-1
-                    }
-                }
-                facet_grob = facet_grob %>%
-                    gtable_add_grob(grobs = og_grob$grobs[[strip_loc[outer_grob_indices[idx]]]]$grobs[[2]],
-                                    t=t, b=b, l=2, r=2)
-            }
-        }
-        new_grob = gtable_add_grob(og_grob, facet_grob, t=strip_top, r=strip_x, l=strip_x, b=strip_bot, name='rstrip')
-        return(new_grob)
-    }
-
-    meta = function(ggp, nest_right=TRUE){
-        ggp = ggp +
-            geom_vline(xintercept=0, size=1, color="grey65")
-        if (ptype=="scaled"){
-            ggp = ggp +
-                geom_vline(xintercept=scaled_length/1000, size=1, color="grey65")
-        }
-        ggp = ggp +
-            geom_ribbon(alpha=0.4, size=0) +
-            geom_line() +
-            scale_y_continuous(name="relative signal", breaks = scales::pretty_breaks(n=3)) +
-            scale_color_ptol(guide=guide_legend(keywidth = unit(2, "cm"), label.position="top", label.hjust=0.5)) +
-            scale_fill_ptol() +
-            theme_metagene
-        if (ptype=="absolute"){
-            ggp = ggp +
-                scale_x_continuous(breaks=scales::pretty_breaks(n=3),
-                                   labels= function(x){if_else(x==0, refptlabel,
-                                                               if(upstream>500 | dnstream>500){as.character(x)} else {as.character(x*1000)})},
-                                   name=paste("distance from", refptlabel, if(upstream>500 | dnstream>500){"(kb)"} else {"(nt)"}),
-                                   limits = c(-upstream/1000, dnstream/1000),
-                                   expand=c(0,0))
-        } else {
-            ggp = ggp +
-                scale_x_continuous(breaks=c(0, (scaled_length/2)/1000, scaled_length/1000),
-                                   labels=c(refptlabel, "", endlabel),
-                                   name="scaled distance",
-                                   limits = c(-upstream/1000, (scaled_length+dnstream)/1000),
-                                   expand=c(0,0))
-        }
-        if (nest_right){
-            ggp = ggp %>% nest_right_facets(level=2, outer="annotation", inner="cluster")
-        }
-        return(ggp)
-    }
+    metadf_sample %<>% mutate_at(vars(group, sample, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
+    metadf_group %<>% mutate_at(vars(group, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
 
     meta_sample_byannotation = ggplot(data = metadf_sample,
                                       aes(x=position, y=pmax(0, mid), ymin=pmax(0, low), ymax=pmax(0, high),
@@ -460,13 +536,25 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
                                      aes(x=position, y=pmax(0, mid), ymin=pmax(0, low), ymax=pmax(0, high),
                                          group=group, color=group, fill=group))
     if (n_anno==1 && max(k)==1){
-        meta_sample_byannotation = meta(meta_sample_byannotation + facet_wrap(~assay, ncol=4),
+        meta_sample_byannotation = meta(ggp = meta_sample_byannotation + facet_wrap(~assay, ncol=4),
+                                        plot_type = ptype, scaled_length = scaled_length,
+                                        refptlabel = refptlabel, endlabel = endlabel,
+                                        upstream=upstream, dnstream = dnstream,
                                         nest_right=FALSE)
-        meta_group_byannotation = meta(meta_group_byannotation + facet_wrap(~assay, ncol=4),
+        meta_group_byannotation = meta(ggp = meta_group_byannotation + facet_wrap(~assay, ncol=4),
+                                       plot_type = ptype, scaled_length = scaled_length,
+                                       refptlabel = refptlabel, endlabel = endlabel,
+                                       upstream=upstream, dnstream = dnstream,
                                        nest_right=FALSE)
     } else {
-        meta_sample_byannotation = meta(meta_sample_byannotation + facet_grid(annotation+cluster~assay))
-        meta_group_byannotation = meta(meta_group_byannotation + facet_grid(annotation+cluster~assay))
+        meta_sample_byannotation = meta(meta_sample_byannotation + facet_grid(annotation+cluster~assay),
+                                        plot_type = ptype, scaled_length = scaled_length,
+                                        refptlabel = refptlabel, endlabel = endlabel,
+                                        upstream=upstream, dnstream = dnstream)
+        meta_group_byannotation = meta(meta_group_byannotation + facet_grid(annotation+cluster~assay),
+                                       plot_type = ptype, scaled_length = scaled_length,
+                                       refptlabel = refptlabel, endlabel = endlabel,
+                                       upstream=upstream, dnstream = dnstream)
     }
 
     ggplot2::ggsave(meta_sample_byannotation_out,
@@ -480,17 +568,27 @@ main = function(inputs, anno_paths, conditions, cutoffs_low, cutoffs_high, sprea
                     height= if(n_anno==1 && max(k)==1){2+8.5*ceiling(n_assays/4)} else {3+sum(k)*4.5},
                     units="cm", limitsize=FALSE)
 
-    meta_group_bycondition = (ggplot(data = metadf_group %>% mutate(clabel = fct_inorder(paste0(annotation, ", ", cluster), ordered=TRUE)),
+    meta_group_bycondition = (ggplot(data = metadf_group %>%
+                                         mutate(clabel = fct_inorder(paste0(annotation, ", ", cluster),
+                                                                     ordered=TRUE)),
                 aes(x=position, y=pmax(0, mid), ymin=pmax(0, low), ymax=pmax(0, high),
                     group=clabel, fill=clabel, color=clabel)) +
-        facet_grid(group~assay, switch="y")) %>% meta(nest_right=FALSE) +
+        facet_grid(group~assay, switch="y")) %>%
+        meta(plot_type = ptype, scaled_length = scaled_length,
+             refptlabel = refptlabel, endlabel = endlabel,
+             upstream=upstream, dnstream = dnstream,
+             nest_right=FALSE) +
         scale_color_ptol(guide=guide_legend(ncol=1)) +
         scale_fill_ptol() +
         theme(legend.position="bottom",
               strip.text.y = element_text(angle=180, hjust=1),
               plot.margin = margin(0.5, 1, 0.5, 0.5, "cm"))
 
-    ggplot2::ggsave(meta_group_bycondition_out, plot=meta_group_bycondition, width=2+n_assays*10, height=1.5*sum(k)+4+4.5*n_distinct(dflist[[1]][["group"]]), units="cm", limitsize=FALSE)
+    ggplot2::ggsave(meta_group_bycondition_out,
+                    plot=meta_group_bycondition,
+                    width=2+n_assays*10,
+                    height=1.5*sum(k)+4+4.5*n_distinct(dflist[[1]][["group"]]),
+                    units="cm", limitsize=FALSE)
 }
 
 main(inputs = snakemake@input[["matrices"]],
@@ -500,6 +598,7 @@ main(inputs = snakemake@input[["matrices"]],
      cutoffs_high = snakemake@params[["cutoffs_high"]],
      spread_type = snakemake@params[["spread_type"]],
      trim_pcts = snakemake@params[["trim_pct"]],
+     standardize = as.logical(snakemake@params[["standardize"]]),
      logtxn = snakemake@params[["logtxn"]],
      pcount = snakemake@params[["pcount"]],
      assays = snakemake@params[["assays"]],
