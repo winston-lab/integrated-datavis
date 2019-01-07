@@ -91,6 +91,7 @@ rule plot_figures:
         cutoffs_low = lambda wc: [v["cutoff_low"] for k,v in FIGURES[wc.figure]["include"].items()],
         cutoffs_high = lambda wc: [v["cutoff_high"] for k,v in FIGURES[wc.figure]["include"].items()],
         trim_pct = lambda wc: [v["trim_pct"] for k,v in FIGURES[wc.figure]["include"].items()],
+        standardize = lambda wc: FIGURES[wc.figure]["parameters"]["standardize"],
         logtxn = lambda wc: [ASSAYS[a]["log_transform"] for a in FIGURES[wc.figure]["include"]],
         pcount = lambda wc: [0 if not ASSAYS[a]["log_transform"] else ASSAYS[a]["pseudocount"] for a in FIGURES[wc.figure]["include"]],
         assays = lambda wc: [ASSAYS[a]["label"] for a in FIGURES[wc.figure]["include"]],

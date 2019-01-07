@@ -89,24 +89,25 @@ figures:
                 cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
                 trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
             TSS-seq-antisense:
-                binsize: 20  # [INT] binsize in bases for summarizing data
-                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
-                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
-                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+                binsize: 20
+                cutoff_low: 0
+                cutoff_high: 0.99
+                trim_pct: 0.01
             TFIIB-ChIP-nexus-protection:
-                binsize: 20  # [INT] binsize in bases for summarizing data
-                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
-                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
-                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+                binsize: 20
+                cutoff_low: 0
+                cutoff_high: 0.99
+                trim_pct: 0.01
             GC-pct:
-                binsize: 20  # [INT] binsize in bases for summarizing data
-                cutoff_low: 0.05  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
-                cutoff_high: 0.95  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
-                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+                binsize: 20
+                cutoff_low: 0.05
+                cutoff_high: 0.95
+                trim_pct: 0.01
         condition: spt6-1004-37C  # [STRING] ID of condition group. Must be present in the 'group' tag fo samples in the assay metadata section.
         control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
         parameters:
             type: absolute  # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See below for example parameters for a scaled plot.
+            standardize: False # [True|False] If True, data for each feature will be standardized. Useful for normalizing out differences in expression to look at relative enrichment over a region.
             refpoint: TSS  # [TSS|TES|center] reference point in region. TSS and TES correspond to the 5' and 3' ends, respectively.
             refpointlabel: TSS  # [STRING] label for reference point
             upstream: 500  # [INT] nucleotides upstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
@@ -139,24 +140,25 @@ figures:
                 cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
                 trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
             TSS-seq-antisense:
-                binsize: 20  # [INT] binsize in bases for summarizing data
-                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
-                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
-                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+                binsize: 20
+                cutoff_low: 0
+                cutoff_high: 0.99
+                trim_pct: 0.01
             TFIIB-ChIP-nexus-protection:
-                binsize: 20  # [INT] binsize in bases for summarizing data
-                cutoff_low: 0  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
-                cutoff_high: 0.99  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
-                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+                binsize: 20
+                cutoff_low: 0
+                cutoff_high: 0.99
+                trim_pct: 0.01
             GC-pct:
-                binsize: 20  # [INT] binsize in bases for summarizing data
-                cutoff_low: 0.05  # [FLOAT in (0,1)] percentile of the data to use as lower bound for heatmap colorbar
-                cutoff_high: 0.95  # [FLOAT in (0,1)] percentile of the data to use as upper bound for heatmap colorbar
-                trim_pct: 0.01  # [FLOAT in (0,1)] if 'spread_type' is 'conf_int' below, this is the % to winsorize before taking the mean. If spread_type is 'quantile', this is the lower percentile to be plotted.
+                binsize: 20
+                cutoff_low: 0.05
+                cutoff_high: 0.95
+                trim_pct: 0.01
         condition: spt6-1004-37C  # [STRING] ID of condition group. Must be present in the 'group' tag fo samples in the assay metadata section.
         control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
         parameters:
             type: scaled  # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See above for example parameters for an absolute distance plot.
+            standardize: False # [True|False] If True, data for each feature will be standardized. Useful for normalizing out differences in expression to look at relative enrichment over a region.
             scaled_length: 2000  # [INT] length, in nt, to scale all annotations to
             refpointlabel: TSS  # [STRING] label for 5' end of scaled annotations
             endlabel: CPS  # [STRING] label for 3' end of scaled annotations
