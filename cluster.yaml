@@ -8,7 +8,7 @@ __default__:
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 compute_matrix:
-    time : 10
+    time : 3
     mem : 400
 
 plot_figures:
