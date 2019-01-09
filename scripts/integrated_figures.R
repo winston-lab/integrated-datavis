@@ -22,7 +22,7 @@ import = function(data_path, condition_ids) {
         return()
 }
 
-nest_right_facets = function(ggp, level=2, outer="replicate", inner="annotation", k){
+nest_right_facets = function(ggp, level=2, outer="replicate", inner="annotation", n_anno, k){
     og_grob = ggplotGrob(ggp)
     strip_loc = grep("strip-r", og_grob[["layout"]][["name"]])
     strip = gtable_filter(og_grob, "strip-r", trim=FALSE)
@@ -127,7 +127,7 @@ meta = function(ggp,
                 plot_type, scaled_length,
                 refptlabel, endlabel,
                 upstream, dnstream,
-                k, nest_right=TRUE){
+                n_anno, k, nest_right=TRUE){
     ggp = ggp +
         geom_vline(xintercept = ifelse(plot_type=="scaled",
                                        c(0, scaled_length/1000),
@@ -163,7 +163,11 @@ meta = function(ggp,
                                expand=c(0,0))
     }
     if (nest_right){
-        ggp %<>% nest_right_facets(level=2, outer="annotation", inner="cluster", k=k)
+        ggp %<>%
+            nest_right_facets(level=2,
+                              outer="annotation",
+                              inner="cluster",
+                              n_anno=n_anno, k=k)
     }
     return(ggp)
 }
@@ -541,21 +545,21 @@ main = function(inputs, anno_paths, conditions,
                                         plot_type = ptype, scaled_length = scaled_length,
                                         refptlabel = refptlabel, endlabel = endlabel,
                                         upstream=upstream, dnstream = dnstream,
-                                        k=k, nest_right=FALSE)
+                                        n_anno=n_anno, k=k, nest_right=FALSE)
         meta_group_byannotation = meta(ggp = (meta_group_byannotation + facet_wrap(~assay, ncol=4)),
                                        plot_type = ptype, scaled_length = scaled_length,
                                        refptlabel = refptlabel, endlabel = endlabel,
                                        upstream=upstream, dnstream = dnstream,
-                                       k=k, nest_right=FALSE)
+                                       n_anno=n_anno, k=k, nest_right=FALSE)
     } else {
         meta_sample_byannotation = meta(meta_sample_byannotation + facet_grid(annotation+cluster~assay),
                                         plot_type = ptype, scaled_length = scaled_length,
                                         refptlabel = refptlabel, endlabel = endlabel,
-                                        upstream=upstream, dnstream = dnstream, k=k)
+                                        upstream=upstream, dnstream = dnstream, n_anno=n_anno, k=k)
         meta_group_byannotation = meta(meta_group_byannotation + facet_grid(annotation+cluster~assay),
                                        plot_type = ptype, scaled_length = scaled_length,
                                        refptlabel = refptlabel, endlabel = endlabel,
-                                       upstream=upstream, dnstream = dnstream, k=k)
+                                       upstream=upstream, dnstream = dnstream, n_anno=n_anno, k=k)
     }
 
     ggplot2::ggsave(meta_sample_byannotation_out,
@@ -578,7 +582,7 @@ main = function(inputs, anno_paths, conditions,
         meta(plot_type = ptype, scaled_length = scaled_length,
              refptlabel = refptlabel, endlabel = endlabel,
              upstream=upstream, dnstream = dnstream,
-             k=k, nest_right=FALSE) +
+             n_anno=n_anno, k=k, nest_right=FALSE) +
         scale_color_ptol(guide=guide_legend(ncol=1)) +
         scale_fill_ptol() +
         theme(legend.position="bottom",
