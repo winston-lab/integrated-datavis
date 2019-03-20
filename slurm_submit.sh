@@ -14,10 +14,6 @@ snakemake -p \
             <(snakemake --lp --rerun-incomplete) | sort -u` \
     --latency-wait 300 \
     --rerun-incomplete \
-    --cluster-config $(grep -h annotation_workflow config.yaml | \
-                        head -n 1 | \
-                        awk '{print $2}' | \
-                        paste -d '' - <(echo config.yaml)) \
     --cluster-config cluster.yaml \
     --use-conda \
     --jobs 9999 \
