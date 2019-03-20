@@ -1,12 +1,12 @@
 #!/bin/bash
 
 #SBATCH -p short
-#SBATCH -t 12:00:00
+#SBATCH -t 6:00:00
 #SBATCH --mem-per-cpu=1400M
 #SBATCH -c 1
 #SBATCH -e snakemake.err
 #SBATCH -o snakemake.log
-#SBATCH -J TSS-seq-snakemake
+#SBATCH -J data-integration-snakemake
 
 snakemake -p \
     -R `cat <(snakemake --lc --rerun-incomplete) \
