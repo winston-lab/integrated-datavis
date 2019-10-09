@@ -16,7 +16,7 @@ import = function(data_path, condition_ids) {
         ungroup() %>%
         mutate(annotation=annotation_labeled) %>%
         select(-annotation_labeled) %>%
-        mutate_at(vars('sample', 'annotation'), funs(fct_inorder(., ordered=TRUE))) %>%
+        mutate_at(vars('sample', 'annotation'), ~(fct_inorder(., ordered=TRUE))) %>%
         mutate(group = ordered(group, levels = condition_ids)) %>%
         drop_na() %>%
         return()
@@ -92,11 +92,11 @@ nest_right_facets = function(ggp, level=2, outer="replicate", inner="annotation"
 }
 
 theme_heatmap = theme_minimal() +
-    theme(text = element_text(size=12, color="black", face="bold"),
+    theme(text = element_text(size=12, color="black"),
           axis.text.y = element_blank(),
-          axis.text.x = element_text(size=12, color="black", face="bold", margin = unit(c(0,0,0,0), "cm")),
+          axis.text.x = element_text(size=12, color="black", margin = unit(c(0,0,0,0), "cm")),
           axis.title.y = element_blank(),
-          strip.text = element_text(size=12, color="black", face="bold"),
+          strip.text = element_text(size=12, color="black"),
           strip.text.y = element_blank(),
           # strip.background = element_rect(fill="white", size=0),
           strip.background = element_blank(),
@@ -104,18 +104,18 @@ theme_heatmap = theme_minimal() +
           legend.text = element_text(size=10, face="plain"),
           legend.margin = margin(0,0,0,0),
           legend.box.margin = margin(0,0,0,0),
-          panel.grid.major.x = element_line(color="black", size=1.5),
-          panel.grid.minor.x = element_line(color="black"),
+          panel.grid.major.x = element_line(color="black"),
+          # panel.grid.minor.x = element_line(color="black"),
           panel.grid.major.y = element_blank(),
           panel.grid.minor.y = element_blank(),
           panel.spacing.x = unit(.25, "cm"))
 
 theme_metagene = theme_light() +
-    theme(text = element_text(size=12, color="black", face="bold"),
-          axis.text = element_text(size=12, color="black", face="bold"),
+    theme(text = element_text(size=12, color="black"),
+          axis.text = element_text(size=12, color="black"),
           axis.text.y = element_text(size=10, face="plain"),
           axis.title = element_text(size=10, face="plain"),
-          strip.text = element_text(size=12, color="black", face="bold"),
+          strip.text = element_text(size=12, color="black"),
           strip.background = element_rect(fill="white", size=0),
           strip.placement="outside",
           legend.position = "top",
@@ -203,12 +203,11 @@ main = function(inputs, anno_paths, conditions,
         if (standardize || sortmethod=="cluster") {
             standardized = dflist[[assays[[i]]]] %>%
                 left_join(dflist[[assays[[i]]]] %>%
-                              group_by(group, annotation, index) %>%
-                              summarise(mean = mean(signal)/(2*n_distinct(sample)),
-                                        sdev = sd(signal)/(2*n_distinct(sample))) %>%
+                              group_by(group, annotation, index, position) %>%
+                              summarise(signal = mean(signal, na.rm=TRUE)) %>%
                               group_by(annotation, index) %>%
-                              summarise(mean = sum(mean),
-                                        sdev = sum(sdev)),
+                              summarise(mean = mean(signal, na.rm=TRUE),
+                                        sdev = sd(signal, na.rm=TRUE)),
                           by=c("annotation", "index")) %>%
                 mutate(signal = (signal-mean)/sdev) %>%
                 select(-c(mean, sdev))
@@ -389,7 +388,7 @@ main = function(inputs, anno_paths, conditions,
                        aes(x=position, y=new_index, fill=mean))
         }
 
-        heatmaps[[i]] = heatmaps[[i]] +
+        heatmaps[[assays[i]]] = heatmaps[[assays[i]]] +
             geom_raster() +
             scale_fill_viridis(option = cmap, na.value = "#FFFFFF00",
                                limits = cutoffs,
@@ -398,19 +397,19 @@ main = function(inputs, anno_paths, conditions,
                                                       barwidth=12,
                                                       barheight=1,
                                                       title.hjust=0.5),
-                               name=if (logtxn[[i]]){ bquote(bold(log[2] ~ .(assays[[i]]) ~ "signal"))}
-                                    else {bquote(bold(.(assays[[i]]) ~ "signal"))}) +
+                               name=if (logtxn[[i]]){ bquote(log[2] ~ .(assays[[i]]) ~ "signal")}
+                                    else {bquote(.(assays[[i]]) ~ "signal")}) +
             scale_y_reverse(expand=c(0.02, 0)) +
             theme_heatmap
         if(max(k)>1){
-            heatmaps[[i]] = heatmaps[[i]] +
+            heatmaps[[assays[i]]] = heatmaps[[assays[i]]] +
                 facet_grid(annotation+cluster~group,
                            scale="free_y",
                            space="free_y",
                            switch="y",
                            drop=FALSE)
         } else {
-            heatmaps[[i]] = heatmaps[[i]] +
+            heatmaps[[assays[i]]] = heatmaps[[assays[i]]] +
                 facet_grid(annotation~group,
                            scale="free_y",
                            space="free_y",
@@ -419,7 +418,7 @@ main = function(inputs, anno_paths, conditions,
         }
 
         if (ptype=="absolute"){
-            heatmaps[[i]] = heatmaps[[i]] +
+            heatmaps[[assays[i]]] = heatmaps[[assays[i]]] +
                 scale_x_continuous(breaks = scales::pretty_breaks(n=3),
                                    labels = format_xaxis(refptlabel = refptlabel,
                                                          upstream = upstream,
@@ -428,7 +427,7 @@ main = function(inputs, anno_paths, conditions,
                                                if_else(upstream>500 | dnstream>500, "(kb)", "(nt)")),
                                    expand=c(0.05, 0))
         } else {
-            heatmaps[[i]] = heatmaps[[i]] +
+            heatmaps[[assays[i]]] = heatmaps[[assays[i]]] +
                 scale_x_continuous(breaks = c(0, (scaled_length/2)/1000, scaled_length/1000),
                                    labels = c(refptlabel, "", endlabel),
                                    name= "scaled distance",
@@ -438,13 +437,15 @@ main = function(inputs, anno_paths, conditions,
 
     #EXTREMELY JANKY WAY TO GET FACET LABELS...build an invisible plot...
     #TODO: facet by clusters also and nicer labeling for clusters
-    facet_label = ggplot(data = hmap_df,
+    facet_label = ggplot(data = hmap_df %>%
+                             filter(group == unique(hmap_df[["group"]][1])),
                          aes(x=0, y=new_index, fill=mean)) +
         geom_raster() +
         scale_fill_gradient(low="#FFFFFF00", high="#FFFFFF00",
+                            na.value="#FFFFFF00",
                             guide=guide_colorbar(title.position="top", barwidth=0.1,
                                                  barheight=1, title.hjust=0.5),
-                            name=bquote(bold("."))) +
+                            name=bquote(".")) +
         scale_y_reverse(expand=c(0.02, 0)) +
         facet_grid(annotation~group, scale="free_y", space="free_y") +
         theme_heatmap +
@@ -452,7 +453,7 @@ main = function(inputs, anno_paths, conditions,
               strip.text.x = element_text(color="#FFFFFF00"),
               axis.text.x = element_text(color="#FFFFFF00"),
               panel.grid = element_blank(),
-              strip.text.y = element_text(size=12, color="black", face="bold", angle=0, hjust=1))
+              strip.text.y = element_text(size=12, color="black", angle=0, hjust=1))
 
     for (i in 0:((n_assays-1) %/% 4)){
         heatmaps = append(heatmaps,
@@ -463,10 +464,13 @@ main = function(inputs, anno_paths, conditions,
     all_heatmaps = plot_grid(plotlist = heatmaps,
                              align="h",
                              ncol=min(n_assays+1, 5),
+                             rel_widths=c(1/length(conditions), 1, 1, 1, 1),
                              axis="trbl")
 
-    ggplot2::ggsave(heatmap_out, plot = all_heatmaps,
-                    width=2+2/15*max(nchar(as.character(annotations)))+min(n_assays,4)*16,
+    ggplot2::ggsave(heatmap_out,
+                    plot=all_heatmaps,
+                    width=2 + 2/15*max(nchar(as.character(annotations))) +
+                        min(n_assays*length(conditions)/2,4)*16,
                     height=ceiling(n_assays/4)*25, units="cm", limitsize=FALSE)
 
     metadf_sample = tibble()
@@ -530,8 +534,12 @@ main = function(inputs, anno_paths, conditions,
         metadf_sample %<>% mutate(cluster = paste("cluster", cluster))
         metadf_group %<>% mutate(cluster = paste("cluster", cluster))
     }
-    metadf_sample %<>% mutate_at(vars(group, sample, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
-    metadf_group %<>% mutate_at(vars(group, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
+    metadf_sample %<>%
+        mutate(group=ordered(group, levels=conditions)) %>%
+        mutate_at(vars(sample, assay, cluster), funs(fct_inorder(., ordered=TRUE)))
+    metadf_group %<>%
+        mutate(group=ordered(group, levels=conditions)) %>%
+        mutate_at(vars(assay, cluster), funs(fct_inorder(., ordered=TRUE)))
 
     meta_sample_byannotation = ggplot(data = metadf_sample,
                                       aes(x=position, y=pmax(0, mid), ymin=pmax(0, low), ymax=pmax(0, high),
@@ -592,7 +600,7 @@ main = function(inputs, anno_paths, conditions,
     ggplot2::ggsave(meta_group_bycondition_out,
                     plot=meta_group_bycondition,
                     width=2+n_assays*10,
-                    height=1.5*sum(k)+4+4.5*n_distinct(dflist[[1]][["group"]]),
+                    height=1.5*sum(k)+4+4.5*length(conditions),
                     units="cm", limitsize=FALSE)
 }
 
@@ -655,4 +663,3 @@ main(inputs = snakemake@input[["matrices"]],
      meta_sample_byannotation_out = snakemake@output[["sample_facet_anno_standardized"]],
      meta_group_byannotation_out = snakemake@output[["group_facet_anno_standardized"]],
      meta_group_bycondition_out = snakemake@output[["group_facet_group_standardized"]])
-

@@ -67,7 +67,7 @@ rule compute_matrix:
 
 rule cat_matrices:
     input:
-        lambda wc: expand("datavis/{figure}/{annotation}_{assay}_{sample}-melted.tsv.gz", annotation = [k for k,v in FIGURES[wc.figure]["annotations"].items()], sample = [k for k,v in ASSAYS[wc.assay]["coverage"].items() if v["group"] in [FIGURES[wc.figure]["control"], FIGURES[wc.figure]["condition"]]], figure=wc.figure, assay=wc.assay)
+        lambda wc: expand("datavis/{figure}/{annotation}_{assay}_{sample}-melted.tsv.gz", annotation = [k for k,v in FIGURES[wc.figure]["annotations"].items()], sample = [k for k,v in ASSAYS[wc.assay]["coverage"].items() if v["group"] in FIGURES[wc.figure]["conditions"]], figure=wc.figure, assay=wc.assay)
     output:
         "datavis/{figure}/{figure}_{assay}.tsv.gz"
     log: "logs/cat_matrices/cat_matrices-{figure}_{assay}.log"
@@ -91,7 +91,7 @@ rule plot_figures:
     params:
         annotations_out = lambda wc: [f"datavis/{wc.figure}/{annotation}_cluster-" + str(cluster) + ".bed" for annotation in FIGURES[wc.figure]["annotations"] for cluster in range(1, FIGURES[wc.figure]["annotations"][annotation]["n_clusters"]+1)],
         clusters_out = lambda wc: [f"datavis/{wc.figure}/" + annotation + ".pdf" for annotation in FIGURES[wc.figure]["annotations"]],
-        conditions = lambda wc: [FIGURES[wc.figure]["control"], FIGURES[wc.figure]["condition"]],
+        conditions = lambda wc: FIGURES[wc.figure]["conditions"],
         cutoffs_low = lambda wc: [v["cutoff_low"] for k,v in FIGURES[wc.figure]["include"].items()],
         cutoffs_high = lambda wc: [v["cutoff_high"] for k,v in FIGURES[wc.figure]["include"].items()],
         trim_pct = lambda wc: [v["trim_pct"] for k,v in FIGURES[wc.figure]["include"].items()],
@@ -111,7 +111,8 @@ rule plot_figures:
         cluster_five = lambda wc: [] if FIGURES[wc.figure]["parameters"]["arrange"] != "cluster" else FIGURES[wc.figure]["parameters"]["cluster_five"],
         cluster_three = lambda wc: [] if FIGURES[wc.figure]["parameters"]["arrange"] != "cluster" else FIGURES[wc.figure]["parameters"]["cluster_three"],
         k = lambda wc: [v["n_clusters"] for k,v in FIGURES[wc.figure]["annotations"].items()]
-    conda: "envs/tidyverse.yaml"
+    conda:
+        "envs/tidyverse.yaml"
     script:
         "scripts/integrated_figures.R"
 
