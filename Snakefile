@@ -87,6 +87,8 @@ rule plot_figures:
         sample_facet_anno_standardized = "datavis/{figure}/{figure}-metagene-sample-facet-anno-standardized.svg",
         group_facet_anno = "datavis/{figure}/{figure}-metagene-group-facet-anno.svg",
         group_facet_anno_standardized = "datavis/{figure}/{figure}-metagene-group-facet-anno-standardized.svg",
+        sample_facet_group = "datavis/{figure}/{figure}-metagene-sample-facet-group.svg",
+        sample_facet_group_standardized = "datavis/{figure}/{figure}-metagene-sample-facet-group-standardized.svg",
         group_facet_group = "datavis/{figure}/{figure}-metagene-group-facet-group.svg",
         group_facet_group_standardized = "datavis/{figure}/{figure}-metagene-group-facet-group-standardized.svg",
     params:

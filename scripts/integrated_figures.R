@@ -187,7 +187,7 @@ main = function(inputs, anno_paths, conditions,
                 logtxn, pcount, assays, ptype, refptlabel,
                 upstream, dnstream, scaled_length, sortmethod, cluster_assays, cluster_five, cluster_three, k,
                 cmap, endlabel, anno_out, cluster_out, heatmap_out, meta_sample_byannotation_out,
-                meta_group_byannotation_out, meta_group_bycondition_out) {
+                meta_group_byannotation_out, meta_sample_bycondition_out, meta_group_bycondition_out) {
     n_assays = length(assays)
 
     dflist = list()
@@ -581,6 +581,22 @@ main = function(inputs, anno_paths, conditions,
                     height= if(n_anno==1 && max(k)==1){2+8.5*ceiling(n_assays/4)} else {3+sum(k)*4.5},
                     units="cm", limitsize=FALSE)
 
+    meta_sample_bycondition = (ggplot(data = metadf_sample %>%
+                                         mutate(clabel = fct_inorder(paste0(annotation, ", ", cluster),
+                                                                     ordered=TRUE)),
+                aes(x=position, y=pmax(0, mid), ymin=pmax(0, low), ymax=pmax(0, high),
+                    group=interaction(clabel, sample), fill=clabel, color=clabel)) +
+        facet_grid(group~assay, switch="y")) %>%
+        meta(plot_type = ptype, scaled_length = scaled_length,
+             refptlabel = refptlabel, endlabel = endlabel,
+             upstream=upstream, dnstream = dnstream,
+             n_anno=n_anno, k=k, nest_right=FALSE) +
+        scale_color_ptol(guide=guide_legend(ncol=1)) +
+        scale_fill_ptol() +
+        theme(legend.position="bottom",
+              strip.text.y = element_text(angle=180, hjust=1),
+              plot.margin = margin(0.5, 1, 0.5, 0.5, "cm"))
+
     meta_group_bycondition = (ggplot(data = metadf_group %>%
                                          mutate(clabel = fct_inorder(paste0(annotation, ", ", cluster),
                                                                      ordered=TRUE)),
@@ -597,6 +613,11 @@ main = function(inputs, anno_paths, conditions,
               strip.text.y = element_text(angle=180, hjust=1),
               plot.margin = margin(0.5, 1, 0.5, 0.5, "cm"))
 
+    ggplot2::ggsave(meta_sample_bycondition_out,
+                    plot=meta_sample_bycondition,
+                    width=2+n_assays*10,
+                    height=1.5*sum(k)+4+4.5*length(conditions),
+                    units="cm", limitsize=FALSE)
     ggplot2::ggsave(meta_group_bycondition_out,
                     plot=meta_group_bycondition,
                     width=2+n_assays*10,
@@ -632,6 +653,7 @@ main(inputs = snakemake@input[["matrices"]],
      heatmap_out = snakemake@output[["heatmap"]],
      meta_sample_byannotation_out = snakemake@output[["sample_facet_anno"]],
      meta_group_byannotation_out = snakemake@output[["group_facet_anno"]],
+     meta_sample_bycondition_out = snakemake@output[["sample_facet_group"]],
      meta_group_bycondition_out = snakemake@output[["group_facet_group"]])
 
 main(inputs = snakemake@input[["matrices"]],
@@ -662,4 +684,5 @@ main(inputs = snakemake@input[["matrices"]],
      heatmap_out = snakemake@output[["heatmap_standardized"]],
      meta_sample_byannotation_out = snakemake@output[["sample_facet_anno_standardized"]],
      meta_group_byannotation_out = snakemake@output[["group_facet_anno_standardized"]],
+     meta_sample_bycondition_out = snakemake@output[["sample_facet_group_standardized"]],
      meta_group_bycondition_out = snakemake@output[["group_facet_group_standardized"]])
