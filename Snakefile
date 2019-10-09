@@ -10,6 +10,7 @@ BROWSER = config["browser-shots"]
 
 localrules:
     make_stranded_annotations,
+    compute_matrix,
     cat_matrices,
     make_singlegene_anno,
     make_singlegene_anno_stranded,
