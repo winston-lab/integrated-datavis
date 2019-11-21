@@ -103,8 +103,9 @@ figures:
                 cutoff_low: 0.05
                 cutoff_high: 0.95
                 trim_pct: 0.01
-        condition: spt6-1004-37C  # [STRING] ID of condition group. Must be present in the 'group' tag fo samples in the assay metadata section.
-        control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
+        conditions: # [STRING] List of groups to include in figure. Must be present in the 'group' tag of samples in the assay metadata section.
+            - spt6-1004-37C
+            - spt6+
         parameters:
             type: absolute  # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See below for example parameters for a scaled plot.
             refpoint: TSS  # [TSS|TES|center] reference point in region. TSS and TES correspond to the 5' and 3' ends, respectively.
@@ -153,8 +154,9 @@ figures:
                 cutoff_low: 0.05
                 cutoff_high: 0.95
                 trim_pct: 0.01
-        condition: spt6-1004-37C  # [STRING] ID of condition group. Must be present in the 'group' tag fo samples in the assay metadata section.
-        control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
+        conditions: # [STRING] List of groups to include in figure. Must be present in the 'group' tag of samples in the assay metadata section.
+            - spt6-1004-37C
+            - spt6+
         parameters:
             type: scaled  # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See above for example parameters for an absolute distance plot.
             scaled_length: 2000  # [INT] length, in nt, to scale all annotations to
