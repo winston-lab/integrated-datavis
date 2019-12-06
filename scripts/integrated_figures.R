@@ -506,9 +506,9 @@ main = function(inputs, anno_paths, conditions,
             group_by(group, annotation, assay, position, cluster)
         if (spread_type=="conf_int"){
             temp_metadf_group %<>%
-                summarise(sd = sd(mid, na.rm=TRUE),
+                summarise(sd = sd(signal, na.rm=TRUE),
                           n = n_distinct(sample),
-                          mid = mean(mid, na.rm=TRUE)) %>%
+                          mid = mean(signal, na.rm=TRUE)) %>%
                 mutate(sem = sqrt((n-1)/2)*gamma((n-1)/2)/gamma(n/2)*sd/sqrt(n),
                        high = mid + 1.96*sem,
                        low = mid - 1.96*sem)
