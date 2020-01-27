@@ -152,7 +152,7 @@ rule compute_matrix_singlegene:
         group = lambda wc: ASSAYS[wc.assay]["coverage"][wc.sample]["group"],
         refpoint = lambda wc: BROWSER[wc.gene]["refpoint"],
         upstream = lambda wc: BROWSER[wc.gene]["upstream"] + 1,
-        dnstream = lambda wc: BROWSER[wc.gene]["dnstream"] + 1,
+        dnstream = lambda wc: BROWSER[wc.gene]["downstream"] + 1,
     threads: config["threads"]
     log: "logs/compute_matrix_singlegene/compute_matrix_singlegene-{gene}_{sample}_{assay}.log"
     run:
@@ -164,7 +164,8 @@ rule compute_matrix_singlegene:
 
 rule cat_singlegene_matrices:
     input:
-        lambda wc: expand("browser-shots/{gene}/{gene}_assay-{assay}_sample-{sample}-melted.tsv.gz", sample = [k for k,v in ASSAYS[wc.assay]["coverage"].items() if v["group"]==BROWSER[wc.gene]["control"] or v["group"]==BROWSER[wc.gene]["condition"]], assay=wc.assay, gene=wc.gene)
+        lambda wc: expand("browser-shots/{{gene}}/{{gene}}_assay-{{assay}}_sample-{sample}-melted.tsv.gz",
+                          sample=[k for k,v in ASSAYS[wc.assay]["coverage"].items() if v["group"] in BROWSER[wc.gene]["conditions"]]),
     output:
         "browser-shots/{gene}/{gene}_{assay}.tsv.gz"
     shell: """
@@ -173,7 +174,8 @@ rule cat_singlegene_matrices:
 
 rule cat_singlegene_assays:
     input:
-        lambda wc: expand("browser-shots/{gene}/{gene}_{assay}.tsv.gz", assay=BROWSER[wc.gene]["include"], gene=wc.gene)
+        lambda wc: expand("browser-shots/{{gene}}/{{gene}}_{assay}.tsv.gz",
+                          assay=BROWSER[wc.gene]["include"])
     output:
         "browser-shots/{gene}/{gene}_all-assays.tsv.gz"
     shell: """

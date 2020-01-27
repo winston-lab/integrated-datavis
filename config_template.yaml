@@ -187,8 +187,9 @@ browser-shots:
         refpoint: TSS  # [TSS|TES|center] reference point in region. TSS and TES correspond to the 5' and 3' ends, respectively.
         upstream: 500  # [INT] nucleotides upstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
         downstream: 3000  # [INT] maximum nucleotides downstream of reference point to plot. Must be a multiple of all binsizes of the assays included in the plot.
-        condition: spt6-1004-37C  # [STRING] ID of condition group. Must be present in the 'group' tag fo samples in the assay metadata section.
-        control: spt6+  # [STRING] ID of control group. Must be present in the 'group' tag fo samples in the assay metadata section.
+        conditions:
+            - spt6-1004-37
+            - spt6+
         include:  # IDs of assays to include. Must be present in the assay metadata section
             - TSS-seq-sense
             - TSS-seq-antisense
