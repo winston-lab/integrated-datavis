@@ -31,4 +31,4 @@ find . -name "*.svg" ! -path "*.git*" ! -path "*.snakemake*" ! -name "rulegraph.
         svg2png -w $width -h $height -o $png $svg
     fi
 done
-
+echo "mogrification complete!"

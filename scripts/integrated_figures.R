@@ -134,7 +134,7 @@ meta = function(ggp,
                                        0),
                    size = 1,
                    color = "grey65") +
-        geom_ribbon(alpha=0.4, size=0) +
+        geom_ribbon(alpha=0.2, size=0) +
         geom_line() +
         scale_y_continuous(name="relative signal",
                            breaks = scales::pretty_breaks(n=3)) +
