@@ -12,7 +12,7 @@ import = function(data_path, condition_ids) {
                                       'assay', 'index', 'position', 'signal')) %>%
         filter(group %in% condition_ids) %>%
         group_by(annotation) %>%
-        mutate(annotation_labeled=paste(n_distinct(index), annotation)) %>%
+        mutate(annotation_labeled=paste(max(index), annotation)) %>%
         ungroup() %>%
         mutate(annotation=annotation_labeled) %>%
         select(-annotation_labeled) %>%
