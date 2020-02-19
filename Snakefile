@@ -127,7 +127,7 @@ rule make_singlegene_anno:
     output:
         "browser-shots/{gene}/{gene}.bed"
     shell: """
-        grep {params.gene_id} {input} > {output}
+        grep -w {params.gene_id} {input} > {output}
         """
 
 rule make_singlegene_anno_stranded:
